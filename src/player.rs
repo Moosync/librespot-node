@@ -1,27 +1,17 @@
-use std::time::Duration;
-
 use hex;
 use librespot;
 use librespot::core::session::SessionError;
 use librespot::core::spotify_id::SpotifyId;
 use librespot::core::{authentication::Credentials, config::SessionConfig, session::Session};
-use librespot::playback::config::{
-    Bitrate, NormalisationMethod, NormalisationType, PlayerConfig, VolumeCtrl,
-};
-use librespot::playback::dither::{mk_ditherer, TriangularDitherer};
+use librespot::playback::config::PlayerConfig;
 use librespot::playback::mixer::{Mixer, MixerConfig};
-use librespot::playback::player::{
-    duration_to_coefficient, Player, PlayerEvent, PlayerEventChannel,
-};
+use librespot::playback::player::{Player, PlayerEventChannel};
 use librespot::playback::{audio_backend, mixer};
 use sha1::{Digest, Sha1};
-use tokio;
-use tokio::sync::mpsc::UnboundedReceiver;
 
 pub struct PlayerWrapper {
     player_instance: Player,
     mixer: Box<dyn Mixer>,
-    receiver: UnboundedReceiver<PlayerEvent>,
 }
 
 impl PlayerWrapper {
@@ -29,14 +19,13 @@ impl PlayerWrapper {
         let backend = audio_backend::find(None).unwrap();
         let mixer = mixer::find(None).unwrap()(MixerConfig::default());
 
-        let (p, rec) = Player::new(player_config, session, mixer.get_soft_volume(), move || {
+        let (p, _) = Player::new(player_config, session, mixer.get_soft_volume(), move || {
             (backend)(None, librespot::playback::config::AudioFormat::F32)
         });
 
         return Self {
             player_instance: p,
             mixer,
-            receiver: rec,
         };
     }
 

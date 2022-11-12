@@ -10,7 +10,7 @@ macro_rules! string {
     };
 }
 
-pub fn create_js_obj_from_event<'a, C>(mut cx: C, event: PlayerEvent) -> (Handle<'a, JsObject>, C)
+pub fn create_js_obj_from_event<'a, C>(cx: C, event: PlayerEvent) -> (Handle<'a, JsObject>, C)
 where
     C: Context<'a>,
 {
