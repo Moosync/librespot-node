@@ -104,6 +104,16 @@ fn seek(mut cx: FunctionContext) -> JsResult<JsPromise> {
     Ok(promise)
 }
 
+fn set_volume(mut cx: FunctionContext) -> JsResult<JsPromise> {
+    let volume = cx.argument::<JsNumber>(0)?.value(&mut cx);
+    let promise = send_to_player(cx, move |player, channel, deferred| {
+        player.set_volume(volume as u16);
+        deferred.settle_with(channel, move |mut cx| Ok(cx.undefined()));
+    });
+
+    Ok(promise)
+}
+
 fn close_player(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     cx.this()
         .downcast_or_throw::<JsBox<JsPlayerWrapper>, _>(&mut cx)?
@@ -121,7 +131,7 @@ fn watch_player_events(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = send_to_player(cx, move |player, c, deferred| {
         let mut event_channel = player.get_player_event_channel();
 
-        tokio::task::spawn_blocking(move || {
+        tokio::task::spawn(async move {
             // If the event queue is empty, the process may exit before this executes
             channel.send(move |mut cx| -> Result<(), _> {
                 let cb = cb.into_inner(&mut cx);
@@ -150,6 +160,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("pause", pause)?;
     cx.export_function("stop", stop)?;
     cx.export_function("seek", seek)?;
+    cx.export_function("set_volume", set_volume)?;
     cx.export_function("watch_command_events", watch_player_events)?;
     cx.export_function("close_player", close_player)?;
     Ok(())

@@ -1,11 +1,18 @@
+use std::time::Duration;
+
 use hex;
 use librespot;
 use librespot::core::session::SessionError;
 use librespot::core::spotify_id::SpotifyId;
 use librespot::core::{authentication::Credentials, config::SessionConfig, session::Session};
-use librespot::playback::config::PlayerConfig;
-use librespot::playback::mixer::MixerConfig;
-use librespot::playback::player::{Player, PlayerEvent, PlayerEventChannel};
+use librespot::playback::config::{
+    Bitrate, NormalisationMethod, NormalisationType, PlayerConfig, VolumeCtrl,
+};
+use librespot::playback::dither::{mk_ditherer, TriangularDitherer};
+use librespot::playback::mixer::{Mixer, MixerConfig};
+use librespot::playback::player::{
+    duration_to_coefficient, Player, PlayerEvent, PlayerEventChannel,
+};
 use librespot::playback::{audio_backend, mixer};
 use sha1::{Digest, Sha1};
 use tokio;
@@ -13,20 +20,22 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 pub struct PlayerWrapper {
     player_instance: Player,
+    mixer: Box<dyn Mixer>,
     receiver: UnboundedReceiver<PlayerEvent>,
 }
 
 impl PlayerWrapper {
     pub fn new(session: Session, player_config: PlayerConfig) -> Self {
         let backend = audio_backend::find(None).unwrap();
-        let volume_getter = mixer::find(None).unwrap()(MixerConfig::default()).get_soft_volume();
+        let mixer = mixer::find(None).unwrap()(MixerConfig::default());
 
-        let (p, rec) = Player::new(player_config, session, volume_getter, move || {
+        let (p, rec) = Player::new(player_config, session, mixer.get_soft_volume(), move || {
             (backend)(None, librespot::playback::config::AudioFormat::F32)
         });
 
         return Self {
             player_instance: p,
+            mixer,
             receiver: rec,
         };
     }
@@ -55,6 +64,12 @@ impl PlayerWrapper {
 
     pub fn seek(&mut self, pos_ms: u32) {
         self.player_instance.seek(pos_ms)
+    }
+
+    pub fn set_volume(&mut self, volume: u16) {
+        self.mixer.set_volume(
+            ((volume.max(0).min(100) as f32 / 100f32) * u16::MAX as f32).round() as u16,
+        );
     }
 
     // pub fn start_discovery() {
@@ -91,7 +106,7 @@ impl PlayerWrapper {
             }
         };
 
-        let credentials = Credentials::with_password("ovenoboyo@gmail.com", "kekboi69");
+        let credentials = Credentials::with_password("username", "password");
         let session = Session::connect(session_config, credentials, None, false).await;
         println!("Created session");
         match session {
