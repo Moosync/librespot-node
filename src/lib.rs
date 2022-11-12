@@ -7,7 +7,10 @@ use neon::{
     types::{Deferred, JsBoolean, JsBox, JsFunction, JsNumber, JsPromise, JsString, JsUndefined},
 };
 use player::PlayerWrapper;
+use std::env;
 use utils::create_js_obj_from_event;
+
+use crate::player::start_discovery;
 mod js_player;
 mod player;
 mod utils;
@@ -163,5 +166,8 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("set_volume", set_volume)?;
     cx.export_function("watch_command_events", watch_player_events)?;
     cx.export_function("close_player", close_player)?;
+
+    start_discovery();
+
     Ok(())
 }

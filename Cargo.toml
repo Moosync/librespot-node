@@ -17,7 +17,7 @@ tokio = { version = "1.21.2", features = ["full"] }
 log = { version = "^0.4.5", features = ["std"] }
 simple-logging = "2.0.1"
 futures = "0.3.25"
-librespot = "0.4.2"
+librespot = { git = "https://github.com/librespot-org/librespot", branch = "dev" }
 hex = "0.4.3"
 sha1 = "0.10.5"
 

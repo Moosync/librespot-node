@@ -19,21 +19,6 @@ where
             play_request_id,
             track_id,
         } => default_to_obj(cx, string!("stopped"), play_request_id, track_id),
-        PlayerEvent::Started {
-            play_request_id,
-            track_id,
-            position_ms,
-        } => started_to_obj(
-            cx,
-            string!("started"),
-            play_request_id,
-            track_id,
-            position_ms,
-        ),
-        PlayerEvent::Changed {
-            old_track_id,
-            new_track_id,
-        } => track_change_to_obj(cx, string!("changed"), old_track_id, new_track_id),
         PlayerEvent::Loading {
             play_request_id,
             track_id,
@@ -52,27 +37,23 @@ where
             play_request_id,
             track_id,
             position_ms,
-            duration_ms,
         } => play_pause_to_obj(
             cx,
             string!("playing"),
             play_request_id,
             track_id,
             position_ms,
-            duration_ms,
         ),
         PlayerEvent::Paused {
             play_request_id,
             track_id,
             position_ms,
-            duration_ms,
         } => play_pause_to_obj(
             cx,
             string!("paused"),
             play_request_id,
             track_id,
             position_ms,
-            duration_ms,
         ),
         PlayerEvent::TimeToPreloadNextTrack {
             play_request_id,
@@ -86,7 +67,42 @@ where
             play_request_id,
             track_id,
         } => default_to_obj(cx, string!("unavailable"), play_request_id, track_id),
-        PlayerEvent::VolumeSet { volume } => volume_to_obj(cx, string!("volume"), volume),
+        PlayerEvent::VolumeChanged { volume } => todo!(),
+        PlayerEvent::PositionCorrection {
+            play_request_id,
+            track_id,
+            position_ms,
+        } => todo!(),
+        PlayerEvent::Seeked {
+            play_request_id,
+            track_id,
+            position_ms,
+        } => play_pause_to_obj(
+            cx,
+            string!("seeked"),
+            play_request_id,
+            track_id,
+            position_ms,
+        ),
+        PlayerEvent::TrackChanged { audio_item } => todo!(),
+        PlayerEvent::SessionConnected {
+            connection_id,
+            user_name,
+        } => todo!(),
+        PlayerEvent::SessionDisconnected {
+            connection_id,
+            user_name,
+        } => todo!(),
+        PlayerEvent::SessionClientChanged {
+            client_id,
+            client_name,
+            client_brand_name,
+            client_model_name,
+        } => todo!(),
+        PlayerEvent::ShuffleChanged { shuffle } => todo!(),
+        PlayerEvent::RepeatChanged { repeat } => todo!(),
+        PlayerEvent::AutoPlayChanged { auto_play } => todo!(),
+        PlayerEvent::FilterExplicitContentChanged { filter } => todo!(),
     }
 }
 
@@ -175,7 +191,6 @@ fn play_pause_to_obj<'a, C>(
     play_request_id: u64,
     track_id: SpotifyId,
     position_ms: u32,
-    duration_ms: u32,
 ) -> (Handle<'a, JsObject>, C)
 where
     C: Context<'a>,
@@ -184,9 +199,6 @@ where
 
     let pm = cx.number(position_ms);
     obj.set(&mut cx, "position_ms", pm).unwrap();
-
-    let dm = cx.number(duration_ms);
-    obj.set(&mut cx, "duration_ms", dm).unwrap();
 
     return (obj, cx);
 }

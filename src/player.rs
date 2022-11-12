@@ -1,13 +1,19 @@
+use std::error::Error;
+
 use hex;
 use librespot;
 use librespot::core::session::SessionError;
 use librespot::core::spotify_id::SpotifyId;
 use librespot::core::{authentication::Credentials, config::SessionConfig, session::Session};
+use librespot::discovery::DeviceType;
 use librespot::playback::config::PlayerConfig;
 use librespot::playback::mixer::{Mixer, MixerConfig};
 use librespot::playback::player::{Player, PlayerEventChannel};
 use librespot::playback::{audio_backend, mixer};
 use sha1::{Digest, Sha1};
+use tokio;
+
+const CLIENT_ID: &str = "e2a60dbeffd34cc7b1bd76a84ad6c1b2";
 
 pub struct PlayerWrapper {
     player_instance: Player,
@@ -19,7 +25,7 @@ impl PlayerWrapper {
         let backend = audio_backend::find(None).unwrap();
         let mixer = mixer::find(None).unwrap()(MixerConfig::default());
 
-        let (p, _) = Player::new(player_config, session, mixer.get_soft_volume(), move || {
+        let p = Player::new(player_config, session, mixer.get_soft_volume(), move || {
             (backend)(None, librespot::playback::config::AudioFormat::F32)
         });
 
@@ -61,20 +67,6 @@ impl PlayerWrapper {
         );
     }
 
-    // pub fn start_discovery() {
-    //     let device_id = "test";
-    //     let discovery = librespot::discovery::Discovery::builder(device_id)
-    //         .name("test device")
-    //         .port(9001)
-    //         .launch();
-    //     match discovery {
-    //         Ok(_d) => {
-    //             println!("Created discovery")
-    //         }
-    //         Err(d) => panic!("Error while creating discovery: {}", d),
-    //     }
-    // }
-
     fn device_id(name: &str) -> String {
         hex::encode(Sha1::digest(name.as_bytes()))
     }
@@ -83,24 +75,44 @@ impl PlayerWrapper {
         return PlayerConfig::default();
     }
 
-    pub async fn create_session() -> Result<Session, SessionError> {
+    pub async fn create_session() -> Session {
         let session_config = {
             let device_id = Self::device_id("test");
 
-            SessionConfig {
-                user_agent: "1.0.0".to_string(),
-                device_id: device_id,
-                proxy: None,
-                ap_port: Some(9001),
-            }
+            SessionConfig::default()
+
+            // SessionConfig {
+            //     device_id: device_id,
+            //     proxy: None,
+            //     ap_port: Some(9001),
+            //     client_id: CLIENT_ID.to_string(),
+            //     tmp_dir: std::env::temp_dir(),
+            //     autoplay: Some(false),
+            // }
         };
 
         let credentials = Credentials::with_password("username", "password");
-        let session = Session::connect(session_config, credentials, None, false).await;
+        let session = Session::new(session_config, None);
+        session.connect(credentials, false).await;
         println!("Created session");
-        match session {
-            Ok((s, _)) => return Ok(s),
-            Err(e) => return Err(e),
+
+        return session;
+    }
+}
+
+#[tokio::main]
+pub async fn start_discovery() {
+    let device_id = "test";
+
+    let discovery = librespot::discovery::Discovery::builder(device_id, CLIENT_ID)
+        .name("test device")
+        .device_type(DeviceType::Computer)
+        .port(9001)
+        .launch();
+    match discovery {
+        Ok(_d) => {
+            println!("Created discovery")
         }
+        Err(d) => panic!("Error while creating discovery: {}", d),
     }
 }

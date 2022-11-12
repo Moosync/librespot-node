@@ -42,7 +42,7 @@ impl JsPlayerWrapper {
 
             runtime.block_on(async {
                 // Panic thread if session fails to create
-                let session = PlayerWrapper::create_session().await.unwrap();
+                let session = PlayerWrapper::create_session().await;
                 let player_config = PlayerWrapper::create_player_config();
 
                 let mut player = PlayerWrapper::new(session, player_config);
