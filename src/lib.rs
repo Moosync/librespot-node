@@ -1,12 +1,16 @@
 // TODO: Use unwrap_or_... instead of unwraps
 
+use js_player::JsPlayerWrapper;
 use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
     result::{JsResult, NeonResult},
     types::{Deferred, JsBoolean, JsBox, JsFunction, JsNumber, JsPromise, JsString, JsUndefined},
 };
-use player::{JsPlayerWrapper, PlayerWrapper};
+use player::PlayerWrapper;
+use utils::create_js_obj_from_event;
+mod js_player;
 mod player;
+mod utils;
 
 fn send_to_player(
     mut cx: FunctionContext,
@@ -109,13 +113,13 @@ fn close_player(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
-fn watch_command_events(mut cx: FunctionContext) -> JsResult<JsPromise> {
+fn watch_player_events(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
     let mut channel = cx.channel();
     channel.unref(&mut cx);
 
     let promise = send_to_player(cx, move |player, c, deferred| {
-        let mut event_channel = player.player_instance.get_player_event_channel();
+        let mut event_channel = player.get_player_event_channel();
 
         tokio::task::spawn_blocking(move || {
             // If the event queue is empty, the process may exit before this executes
@@ -123,9 +127,9 @@ fn watch_command_events(mut cx: FunctionContext) -> JsResult<JsPromise> {
                 let cb = cb.into_inner(&mut cx);
                 loop {
                     let message = event_channel.blocking_recv().unwrap();
-                    let id = message.get_play_request_id().unwrap();
 
-                    let msg = cx.number(id as i32);
+                    let (msg, c) = create_js_obj_from_event(cx, message);
+                    cx = c;
 
                     let _: Handle<JsUndefined> = cb.call_with(&mut cx).arg(msg).apply(&mut cx)?;
                 }
@@ -146,7 +150,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("pause", pause)?;
     cx.export_function("stop", stop)?;
     cx.export_function("seek", seek)?;
-    cx.export_function("watch_command_events", watch_command_events)?;
+    cx.export_function("watch_command_events", watch_player_events)?;
     cx.export_function("close_player", close_player)?;
     Ok(())
 }
