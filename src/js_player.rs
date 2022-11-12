@@ -1,12 +1,15 @@
 use std::{sync::mpsc, thread};
 
+use librespot::playback::{mixer::Mixer, player::Player};
 use neon::{
     prelude::{Channel, Context},
     types::{Deferred, Finalize},
 };
 use tokio::runtime::Builder;
 
-use crate::player::PlayerWrapper;
+use crate::player::{
+    create_connect_config, create_credentials, create_player_config, create_session, new_player,
+};
 
 impl Finalize for JsPlayerWrapper {}
 
@@ -14,7 +17,8 @@ pub struct JsPlayerWrapper {
     tx: mpsc::Sender<Message>,
 }
 
-pub type Callback = Box<dyn FnOnce(&mut PlayerWrapper, &Channel, Deferred) + Send>;
+pub type Callback =
+    Box<dyn (FnOnce(&mut Player, Box<dyn Mixer>, &Channel, Deferred) -> Box<dyn Mixer>) + Send>;
 
 pub enum Message {
     Callback(Deferred, Callback),
@@ -41,11 +45,12 @@ impl JsPlayerWrapper {
                 .unwrap();
 
             runtime.block_on(async {
-                // Panic thread if session fails to create
-                let session = PlayerWrapper::create_session().await;
-                let player_config = PlayerWrapper::create_player_config();
+                let credentials = create_credentials();
+                let session = create_session(credentials.clone()).await;
+                let player_config = create_player_config();
 
-                let mut player = PlayerWrapper::new(session, player_config);
+                let (mut player, mut mixer) =
+                    new_player(credentials.clone(), session.clone(), player_config.clone());
 
                 // Panic thread if send fails
                 player_creation_tx.send(()).unwrap();
@@ -53,7 +58,8 @@ impl JsPlayerWrapper {
                 while let Ok(message) = rx.recv() {
                     match message {
                         Message::Callback(deferred, f) => {
-                            f(&mut player, &callback_channel, deferred)
+                            let m = f(&mut player, mixer, &callback_channel, deferred);
+                            mixer = m;
                         }
 
                         Message::Close => break,
@@ -77,7 +83,9 @@ impl JsPlayerWrapper {
     pub fn send(
         &self,
         deferred: Deferred,
-        callback: impl FnOnce(&mut PlayerWrapper, &Channel, Deferred) + Send + 'static,
+        callback: impl (FnOnce(&mut Player, Box<dyn Mixer>, &Channel, Deferred) -> Box<dyn Mixer>)
+            + Send
+            + 'static,
     ) {
         let res = self
             .tx

@@ -1192,6 +1192,7 @@ name = "librespot-node"
 version = "0.1.0"
 dependencies = [
  "futures",
+ "futures-util",
  "hex",
  "librespot",
  "log",

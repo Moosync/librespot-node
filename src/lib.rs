@@ -1,13 +1,14 @@
 // TODO: Use unwrap_or_... instead of unwraps
 
 use js_player::JsPlayerWrapper;
+use librespot::playback::{mixer::Mixer, player::Player};
 use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
     result::{JsResult, NeonResult},
     types::{Deferred, JsBoolean, JsBox, JsFunction, JsNumber, JsPromise, JsString, JsUndefined},
 };
-use player::PlayerWrapper;
-use std::env;
+
+use player::{load, set_backend_volume};
 use utils::create_js_obj_from_event;
 
 use crate::player::start_discovery;
@@ -15,9 +16,11 @@ mod js_player;
 mod player;
 mod utils;
 
-fn send_to_player(
+fn send_to_mixer(
     mut cx: FunctionContext,
-    callback: impl FnOnce(&mut PlayerWrapper, &Channel, Deferred) + Send + 'static,
+    callback: impl (FnOnce(&mut Player, Box<dyn Mixer>, &Channel, Deferred) -> Box<dyn Mixer>)
+        + Send
+        + 'static,
 ) -> Handle<JsPromise> {
     let player_wrapper = cx
         .this()
@@ -26,6 +29,36 @@ fn send_to_player(
     let (deferred, promise) = cx.promise();
     match player_wrapper {
         Ok(p) => p.send(deferred, callback),
+
+        Err(e) => {
+            let error = cx
+                .error(format!(
+                    "Failed to get player from \"this\": {}",
+                    e.to_string()
+                ))
+                .unwrap();
+
+            deferred.reject(&mut cx, error)
+        }
+    }
+
+    return promise;
+}
+
+fn send_to_player(
+    mut cx: FunctionContext,
+    callback: impl (FnOnce(&mut Player, &Channel, Deferred)) + Send + 'static,
+) -> Handle<JsPromise> {
+    let player_wrapper = cx
+        .this()
+        .downcast_or_throw::<JsBox<JsPlayerWrapper>, _>(&mut cx);
+
+    let (deferred, promise) = cx.promise();
+    match player_wrapper {
+        Ok(p) => p.send(deferred, move |player, mixer, channel, deferred| {
+            callback(player, channel, deferred);
+            return mixer;
+        }),
 
         Err(e) => {
             let error = cx
@@ -62,7 +95,7 @@ fn load_track(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let auto_play = cx.argument::<JsBoolean>(1)?.value(&mut cx);
 
     let promise = send_to_player(cx, move |player, channel, deferred| {
-        let res = player.load_track(track_id.as_str(), auto_play);
+        let res = load(player, track_id.as_str(), auto_play);
         deferred.settle_with(channel, move |mut cx| Ok(cx.number(res as i32))); /* res is u64 (It shouldn't matter) */
     });
 
@@ -109,9 +142,20 @@ fn seek(mut cx: FunctionContext) -> JsResult<JsPromise> {
 
 fn set_volume(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let volume = cx.argument::<JsNumber>(0)?.value(&mut cx);
-    let promise = send_to_player(cx, move |player, channel, deferred| {
-        player.set_volume(volume as u16);
+    let promise = send_to_mixer(cx, move |_, mixer, channel, deferred| {
+        let m = set_backend_volume(mixer, volume as u16);
         deferred.settle_with(channel, move |mut cx| Ok(cx.undefined()));
+
+        return m;
+    });
+
+    Ok(promise)
+}
+
+fn create_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
+    let promise = send_to_mixer(cx, move |player, mixer, channel, deferred| {
+        deferred.settle_with(channel, move |mut cx| Ok(cx.undefined()));
+        return mixer;
     });
 
     Ok(promise)
@@ -167,7 +211,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("watch_command_events", watch_player_events)?;
     cx.export_function("close_player", close_player)?;
 
-    start_discovery();
+    // start_discovery();
 
     Ok(())
 }
