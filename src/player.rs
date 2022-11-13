@@ -8,6 +8,7 @@ use librespot::playback::config::PlayerConfig;
 use librespot::playback::mixer::{Mixer, MixerConfig};
 use librespot::playback::player::Player;
 use librespot::playback::{audio_backend, mixer};
+use librespot::protocol::authentication::AuthenticationType;
 use tokio;
 
 pub fn new_player(session: Session, player_config: PlayerConfig) -> (Player, Box<dyn Mixer>) {
@@ -28,8 +29,27 @@ pub fn create_player_config() -> PlayerConfig {
     return PlayerConfig::default();
 }
 
-pub fn create_credentials() -> Credentials {
-    Credentials::with_password("username", "password")
+fn get_auth_type(auth_type: &str) -> AuthenticationType {
+    match auth_type {
+        "AUTHENTICATION_USER_PASS" => AuthenticationType::AUTHENTICATION_USER_PASS,
+        "AuthenticationType::AUTHENTICATION_USER_PASS" => {
+            AuthenticationType::AUTHENTICATION_USER_PASS
+        }
+        "AUTHENTICATION_STORED_FACEBOOK_CREDENTIALS" => {
+            AuthenticationType::AUTHENTICATION_STORED_FACEBOOK_CREDENTIALS
+        }
+        "AUTHENTICATION_SPOTIFY_TOKEN" => AuthenticationType::AUTHENTICATION_SPOTIFY_TOKEN,
+        "AUTHENTICATION_FACEBOOK_TOKEN" => AuthenticationType::AUTHENTICATION_FACEBOOK_TOKEN,
+        _ => AuthenticationType::AUTHENTICATION_USER_PASS,
+    }
+}
+
+pub fn create_credentials(username: String, password: String, auth_type: String) -> Credentials {
+    Credentials {
+        username: username.into(),
+        auth_type: get_auth_type(auth_type.as_str()),
+        auth_data: password.into_bytes(),
+    }
 }
 
 pub async fn create_session() -> Session {

@@ -6,7 +6,7 @@ use librespot::connect::spirc::Spirc;
 use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
     result::{JsResult, NeonResult},
-    types::{Deferred, JsBox, JsFunction, JsNumber, JsPromise, JsUndefined},
+    types::{Deferred, JsBox, JsFunction, JsNumber, JsPromise, JsString, JsUndefined},
 };
 
 mod constants;
@@ -42,7 +42,11 @@ fn send_to_player(
 }
 
 fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
-    let callback = cx.argument::<JsFunction>(0)?;
+    let username = cx.argument::<JsString>(0)?.value(&mut cx);
+    let password = cx.argument::<JsString>(1)?.value(&mut cx);
+    let auth_type = cx.argument::<JsString>(2)?.value(&mut cx);
+    let callback = cx.argument::<JsFunction>(3)?;
+
     let (deferred, promise) = cx.promise();
     let channel = cx.channel();
 
@@ -52,7 +56,7 @@ fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
         .unwrap();
 
     deferred.settle_with(&channel, move |mut cx| {
-        let js_player = JsPlayerWrapper::new(&mut cx);
+        let js_player = JsPlayerWrapper::new(&mut cx, username, password, auth_type);
         match js_player {
             Some(_) => Ok(cx.boxed(js_player.unwrap())),
             None => cx.throw_error("Failed to create player"),

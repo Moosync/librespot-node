@@ -33,7 +33,12 @@ pub enum Message {
 }
 
 impl JsPlayerWrapper {
-    pub fn new<'a, C>(cx: &mut C) -> Option<Self>
+    pub fn new<'a, C>(
+        cx: &mut C,
+        username: String,
+        password: String,
+        auth_type: String,
+    ) -> Option<Self>
     where
         C: Context<'a>,
     {
@@ -52,7 +57,7 @@ impl JsPlayerWrapper {
                 .unwrap();
 
             runtime.block_on(async {
-                let credentials = create_credentials();
+                let credentials = create_credentials(username, password, auth_type);
                 let session = create_session().await;
                 let player_config = create_player_config();
                 let connect_config = create_connect_config();
