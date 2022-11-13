@@ -1,0 +1,149 @@
+export interface LibrespotModule {
+  create_player: (
+    username: string,
+    password: string,
+    authType?: string,
+    callback: (event: PlayerEvent) => void
+  ) => Promise<PlayerNativeObject>
+
+  play: () => Promise<void>
+  pause: () => Promise<void>
+  seek: (timeMs) => Promise<void>
+  set_volume: (volume: number) => Promise<void>
+  close_player: () => Promise<void>
+  get_device_id: () => string
+}
+
+export interface AuthDetails {
+  username: string
+  password: string
+  authType?:
+    | "AUTHENTICATION_USER_PASS"
+    | "AUTHENTICATION_USER_PASS"
+    | "AUTHENTICATION_STORED_FACEBOOK_CREDENTIALS"
+    | "AUTHENTICATION_SPOTIFY_TOKEN"
+    | "AUTHENTICATION_FACEBOOK_TOKEN"
+}
+
+export type PlayerEventTypes =
+  | "Stopped"
+  | "Loading"
+  | "Preloading"
+  | "Playing"
+  | "Paused"
+  | "TimeToPreloadNextTrack"
+  | "EndOfTrack"
+  | "Unavailable"
+  | "VolumeChanged"
+  | "PositionCorrection"
+  | "Seeked"
+  | "FilterExplicitContentChanged"
+  | "TrackChanged"
+  | "SessionConnected"
+  | "SessionDisconnected"
+  | "SessionClientChanged"
+  | "ShuffleChanged"
+  | "RepeatChanged"
+  | "AutoPlayChanged"
+  | "PlayerInitialized"
+
+export type PlayerEvent<T extends PlayerEventTypes | string> = {
+  event: T
+} & (T extends "Stopped"
+  ? {
+      play_request_id: bigint
+      track_id: string
+    }
+  : T extends "Loading"
+  ? {
+      play_request_id: bigint
+      track_id: string
+      position_ms: number
+    }
+  : T extends "Preloading"
+  ? {
+      track_id: string
+    }
+  : T extends "Playing"
+  ? {
+      play_request_id: bigint
+      track_id: string
+      position_ms: number
+    }
+  : T extends "Paused"
+  ? {
+      play_request_id: bigint
+      track_id: string
+      position_ms: number
+    }
+  : T extends "TimeToPreloadNextTrack"
+  ? {
+      play_request_id: bigint
+      track_id: string
+    }
+  : T extends "EndOfTrack"
+  ? {
+      play_request_id: bigint
+      track_id: string
+    }
+  : T extends "Unavailable"
+  ? {
+      play_request_id: bigint
+      track_id: string
+    }
+  : T extends "VolumeChanged"
+  ? {
+      volume: number
+    }
+  : T extends "PositionCorrection"
+  ? {
+      play_request_id: bigint
+      track_id: string
+      position_ms: number
+    }
+  : T extends "Seeked"
+  ? {
+      play_request_id: bigint
+      track_id: string
+      position_ms: number
+    }
+  : T extends "TrackChanged"
+  ? {
+      audio_item: string
+    }
+  : T extends "SessionConnected"
+  ? {
+      connection_id: string
+      user_name: string
+    }
+  : T extends "SessionDisconnected"
+  ? {
+      connection_id: string
+      user_name: string
+    }
+  : T extends "SessionClientChanged"
+  ? {
+      client_id: string
+      client_name: string
+      client_brand_name: string
+      client_model_name: string
+    }
+  : T extends "ShuffleChanged"
+  ? {
+      shuffle: boolean
+    }
+  : T extends "RepeatChanged"
+  ? {
+      repeat: boolean
+    }
+  : T extends "AutoPlayChanged"
+  ? {
+      auto_play: boolean
+    }
+  : T extends "FilterExplicitContentChanged"
+  ? {
+      filter: boolean
+    }
+  : T extends "PlayerInitialized"
+  ? undefined
+  : unknown)

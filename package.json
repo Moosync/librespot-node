@@ -2,20 +2,23 @@
   "name": "librespot-node",
   "version": "1.0.0",
   "description": "",
-  "main": "index.node",
+  "main": "src/index.ts",
   "scripts": {
-    "build": "cargo-cp-artifact -nc index.node -- cargo build --message-format=json-render-diagnostics",
+    "build": "cargo-cp-artifact -nc build/librespot.node -- cargo build --manifest-path=native/Cargo.toml --message-format=json-render-diagnostics",
     "build-debug": "npm run build --",
     "build-release": "npm run build -- --release",
     "install": "npm run build-release",
-    "test": "cargo test"
+    "test": "cargo test --manifest-path=native/Cargo.toml",
+    "start": "npm run build-debug && ts-node src/index.ts"
   },
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@types/bindings": "^1.5.1",
     "cargo-cp-artifact": "^0.1"
   },
   "dependencies": {
-    "@types/node": "^18.11.9"
+    "@types/node": "^18.11.9",
+    "bindings": "^1.5.0"
   }
 }
