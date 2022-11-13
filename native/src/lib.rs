@@ -6,7 +6,9 @@ use librespot::connect::spirc::Spirc;
 use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
     result::{JsResult, NeonResult},
-    types::{Deferred, JsBox, JsFunction, JsNumber, JsPromise, JsString, JsUndefined},
+    types::{
+        Deferred, JsBox, JsFunction, JsNumber, JsPromise, JsString, JsUndefined, JsValue, Value,
+    },
 };
 
 mod constants;
@@ -48,7 +50,8 @@ fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let callback = cx.argument::<JsFunction>(3)?;
 
     let (deferred, promise) = cx.promise();
-    let channel = cx.channel();
+    let mut channel = cx.channel();
+    channel.unref(&mut cx);
 
     let global = cx.global();
     global
@@ -126,6 +129,20 @@ fn close_player(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
+fn get_device_id(mut cx: FunctionContext) -> JsResult<JsValue> {
+    let player_wrapper = cx
+        .this()
+        .downcast_or_throw::<JsBox<JsPlayerWrapper>, _>(&mut cx);
+
+    if player_wrapper.is_ok() {
+        return Ok(cx
+            .string(player_wrapper.unwrap().get_device_id())
+            .as_value(&mut cx));
+    }
+
+    return Ok(cx.undefined().as_value(&mut cx));
+}
+
 #[neon::main]
 pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("create_player", create_player)?;
@@ -134,6 +151,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("seek", seek)?;
     cx.export_function("set_volume", set_volume)?;
     cx.export_function("close_player", close_player)?;
+    cx.export_function("get_device_id", get_device_id)?;
 
     Ok(())
 }

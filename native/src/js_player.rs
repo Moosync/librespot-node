@@ -23,6 +23,7 @@ impl Finalize for JsPlayerWrapper {}
 
 pub struct JsPlayerWrapper {
     tx: mpsc::Sender<Message>,
+    device_id: String,
 }
 
 pub type Callback = Box<dyn (FnOnce(&mut Spirc, &Channel, Deferred)) + Send>;
@@ -44,11 +45,14 @@ impl JsPlayerWrapper {
     {
         let (tx, rx) = mpsc::channel::<Message>();
 
-        let (player_creation_tx, player_creation_rx) = mpsc::channel::<()>();
+        let (player_creation_tx, player_creation_rx) = mpsc::channel::<String>();
 
-        let callback_channel = cx.channel();
+        let mut callback_channel = cx.channel();
+        callback_channel.unref(cx);
 
-        let channel = cx.channel();
+        let mut channel = cx.channel();
+        channel.unref(cx);
+
         thread::spawn(move || {
             let runtime = Builder::new_multi_thread()
                 .enable_io()
@@ -58,9 +62,11 @@ impl JsPlayerWrapper {
 
             runtime.block_on(async {
                 let credentials = create_credentials(username, password, auth_type);
-                let session = create_session().await;
+                let session = create_session().await.clone();
                 let player_config = create_player_config();
                 let connect_config = create_connect_config();
+
+                let device_id = session.device_id().to_string();
 
                 let (player, mixer) = new_player(session.clone(), player_config.clone());
 
@@ -80,14 +86,14 @@ impl JsPlayerWrapper {
                 JsPlayerWrapper::listen_commands(rx, spirc, callback_channel);
 
                 // Panic thread if send fails
-                player_creation_tx.send(()).unwrap();
+                player_creation_tx.send(device_id).unwrap();
 
                 spirc_task.await;
             })
         });
 
-        while let Ok(_) = player_creation_rx.recv() {
-            return Some(Self { tx });
+        while let Ok(device_id) = player_creation_rx.recv() {
+            return Some(Self { tx, device_id });
         }
 
         return None;
@@ -141,5 +147,9 @@ impl JsPlayerWrapper {
                 res.err().unwrap().to_string()
             )
         }
+    }
+
+    pub fn get_device_id(&self) -> String {
+        self.device_id.clone()
     }
 }
