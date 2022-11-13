@@ -1,4 +1,6 @@
-use librespot::{core::spotify_id::SpotifyId, playback::player::PlayerEvent};
+use librespot::{
+    core::spotify_id::SpotifyId, metadata::audio::AudioItem, playback::player::PlayerEvent,
+};
 use neon::{
     prelude::{Context, Handle, Object},
     types::JsObject,
@@ -84,7 +86,9 @@ where
             track_id,
             position_ms,
         ),
-        PlayerEvent::TrackChanged { audio_item } => todo!(),
+        PlayerEvent::TrackChanged { audio_item } => {
+            track_change_to_obj(cx, string!("track_changed"), audio_item)
+        }
         PlayerEvent::SessionConnected {
             connection_id,
             user_name,
@@ -147,8 +151,7 @@ where
 fn track_change_to_obj<'a, C>(
     mut cx: C,
     event: String,
-    old_track_id: SpotifyId,
-    new_track_id: SpotifyId,
+    track: Box<AudioItem>,
 ) -> (Handle<'a, JsObject>, C)
 where
     C: Context<'a>,
@@ -158,11 +161,8 @@ where
     let ev = cx.string(event);
     obj.set(&mut cx, "event", ev).unwrap();
 
-    let oti = cx.string(old_track_id.to_uri().unwrap_or("".to_string()));
+    let oti = cx.string(track.track_id.to_uri().unwrap_or("".to_string()));
     obj.set(&mut cx, "old_track_id", oti).unwrap();
-
-    let nti = cx.string(new_track_id.to_uri().unwrap_or("".to_string()));
-    obj.set(&mut cx, "new_track_id", nti).unwrap();
 
     return (obj, cx);
 }

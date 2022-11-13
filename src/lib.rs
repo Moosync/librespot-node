@@ -1,7 +1,15 @@
 // TODO: Use unwrap_or_... instead of unwraps
 
+use std::{
+    sync::{mpsc, Arc},
+    thread,
+};
+
 use js_player::JsPlayerWrapper;
-use librespot::playback::{mixer::Mixer, player::Player};
+use librespot::playback::{
+    mixer::Mixer,
+    player::{Player, PlayerEvent},
+};
 use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
     result::{JsResult, NeonResult},
@@ -9,6 +17,7 @@ use neon::{
 };
 
 use player::{load, set_backend_volume};
+use tokio::runtime::Builder;
 use utils::create_js_obj_from_event;
 
 use crate::player::start_discovery;
@@ -171,30 +180,45 @@ fn close_player(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 }
 
 fn watch_player_events(mut cx: FunctionContext) -> JsResult<JsPromise> {
-    let cb = cx.argument::<JsFunction>(0)?.root(&mut cx);
-    let mut channel = cx.channel();
-    channel.unref(&mut cx);
+    let cb = cx.argument::<JsFunction>(0)?;
+    let mut callback_channel = cx.channel();
+    callback_channel.unref(&mut cx);
 
-    let promise = send_to_player(cx, move |player, c, deferred| {
+    let global = cx.global();
+    global
+        .set(&mut cx, "_watch_player_events_global", cb)
+        .unwrap();
+
+    let promise = send_to_player(cx, move |player, channel, deferred| {
         let mut event_channel = player.get_player_event_channel();
 
-        tokio::task::spawn(async move {
-            // If the event queue is empty, the process may exit before this executes
-            channel.send(move |mut cx| -> Result<(), _> {
-                let cb = cb.into_inner(&mut cx);
-                loop {
-                    let message = event_channel.blocking_recv().unwrap();
-
-                    let (msg, c) = create_js_obj_from_event(cx, message);
-                    cx = c;
-
-                    let _: Handle<JsUndefined> = cb.call_with(&mut cx).arg(msg).apply(&mut cx)?;
-                }
-            });
+        thread::spawn(move || loop {
+            let message = event_channel.blocking_recv();
+            if message.is_some() {
+                callback_channel.send(move |mut cx| {
+                    let global = cx.global();
+                    let obj: NeonResult<Handle<JsFunction>> =
+                        global.get(&mut cx, "_watch_player_events_global");
+                    if obj.is_ok() {
+                        let (js_obj, mut cx) = create_js_obj_from_event(cx, message.unwrap());
+                        let _: JsResult<JsUndefined> =
+                            obj.unwrap().call_with(&mut cx).arg(js_obj).apply(&mut cx);
+                    }
+                    Ok(())
+                });
+            }
         });
 
-        deferred.settle_with(c, move |mut cx| Ok(cx.undefined()));
+        deferred.settle_with(channel, move |mut cx| Ok(cx.undefined()));
     });
+
+    // thread::spawn(move || loop {
+    //     let mut cb2 = cb.clone(&mut cx);
+    //     channel.send(|mut cx| {
+    //         let cb1 = cb2.into_inner(&mut cx);
+    //         Ok(())
+    //     });
+    // });
 
     Ok(promise)
 }
