@@ -81,11 +81,10 @@ pub fn create_credentials() -> Credentials {
     Credentials::with_password("username", "password")
 }
 
-pub async fn create_session(credentials: Credentials) -> Session {
+pub async fn create_session() -> Session {
     let session_config = SessionConfig::default();
 
     let session = Session::new(session_config, None);
-    session.connect(credentials, false).await.unwrap();
     println!("Created session");
 
     return session;

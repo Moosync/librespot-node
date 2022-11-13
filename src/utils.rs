@@ -1,204 +1,202 @@
-use librespot::{
-    core::spotify_id::SpotifyId, metadata::audio::AudioItem, playback::player::PlayerEvent,
-};
+use librespot::{core::spotify_id::SpotifyId, playback::player::PlayerEvent};
 use neon::{
     prelude::{Context, Handle, Object},
-    types::JsObject,
+    types::{JsObject, JsValue, Value},
 };
-
-macro_rules! string {
-    ($s: expr) => {
-        String::from($s)
-    };
-}
 
 pub fn create_js_obj_from_event<'a, C>(cx: C, event: PlayerEvent) -> (Handle<'a, JsObject>, C)
 where
     C: Context<'a>,
 {
+    let mut obj = StructToObj::new(cx);
     match event {
         PlayerEvent::Stopped {
             play_request_id,
             track_id,
-        } => default_to_obj(cx, string!("stopped"), play_request_id, track_id),
+        } => obj
+            .add_event("stopped")
+            .add_number("play_request_id", play_request_id)
+            .add_spotify_id("track_id", track_id),
         PlayerEvent::Loading {
             play_request_id,
             track_id,
             position_ms,
-        } => started_to_obj(
-            cx,
-            string!("loading"),
-            play_request_id,
-            track_id,
-            position_ms,
-        ),
-        PlayerEvent::Preloading { track_id } => {
-            default_to_obj(cx, string!("preloading"), 0, track_id)
-        }
+        } => obj
+            .add_event("loading")
+            .add_number("play_request_id", play_request_id)
+            .add_spotify_id("track_id", track_id)
+            .add_number("position_ms", position_ms as u64),
+
+        PlayerEvent::Preloading { track_id } => obj
+            .add_event("preloading")
+            .add_spotify_id("track_id", track_id),
         PlayerEvent::Playing {
             play_request_id,
             track_id,
             position_ms,
-        } => play_pause_to_obj(
-            cx,
-            string!("playing"),
-            play_request_id,
-            track_id,
-            position_ms,
-        ),
+        } => obj
+            .add_event("playing")
+            .add_number("play_request_id", play_request_id)
+            .add_spotify_id("track_id", track_id)
+            .add_number("position_ms", position_ms as u64),
         PlayerEvent::Paused {
             play_request_id,
             track_id,
             position_ms,
-        } => play_pause_to_obj(
-            cx,
-            string!("paused"),
-            play_request_id,
-            track_id,
-            position_ms,
-        ),
+        } => obj
+            .add_event("paused")
+            .add_number("play_request_id", play_request_id)
+            .add_spotify_id("track_id", track_id)
+            .add_number("position_ms", position_ms as u64),
         PlayerEvent::TimeToPreloadNextTrack {
             play_request_id,
             track_id,
-        } => default_to_obj(cx, string!("preload"), play_request_id, track_id),
+        } => obj
+            .add_event("timeToPreloadNextTrack")
+            .add_number("play_request_id", play_request_id)
+            .add_spotify_id("track_id", track_id),
         PlayerEvent::EndOfTrack {
             play_request_id,
             track_id,
-        } => default_to_obj(cx, string!("ended"), play_request_id, track_id),
+        } => obj
+            .add_event("endOfTrack")
+            .add_number("play_request_id", play_request_id)
+            .add_spotify_id("track_id", track_id),
         PlayerEvent::Unavailable {
             play_request_id,
             track_id,
-        } => default_to_obj(cx, string!("unavailable"), play_request_id, track_id),
-        PlayerEvent::VolumeChanged { volume } => todo!(),
+        } => obj
+            .add_event("unavailable")
+            .add_number("play_request_id", play_request_id)
+            .add_spotify_id("track_id", track_id),
+        PlayerEvent::VolumeChanged { volume } => obj
+            .add_event("volumeChanged")
+            .add_number("volume", volume as u64),
         PlayerEvent::PositionCorrection {
             play_request_id,
             track_id,
             position_ms,
-        } => todo!(),
+        } => obj
+            .add_event("positionCorrection")
+            .add_number("play_request_id", play_request_id)
+            .add_spotify_id("track_id", track_id)
+            .add_number("position_ms", position_ms as u64),
         PlayerEvent::Seeked {
             play_request_id,
             track_id,
             position_ms,
-        } => play_pause_to_obj(
-            cx,
-            string!("seeked"),
-            play_request_id,
-            track_id,
-            position_ms,
-        ),
-        PlayerEvent::TrackChanged { audio_item } => {
-            track_change_to_obj(cx, string!("track_changed"), audio_item)
-        }
+        } => obj
+            .add_event("seeked")
+            .add_number("play_request_id", play_request_id)
+            .add_spotify_id("track_id", track_id)
+            .add_number("position_ms", position_ms as u64),
+        PlayerEvent::TrackChanged { audio_item } => obj
+            .add_event("trackChanged")
+            .add_string("audio_item", audio_item.track_id.to_string()),
+
         PlayerEvent::SessionConnected {
             connection_id,
             user_name,
-        } => todo!(),
+        } => obj
+            .add_event("sessionConnected")
+            .add_string("connection_id", connection_id)
+            .add_string("user_name", user_name),
         PlayerEvent::SessionDisconnected {
             connection_id,
             user_name,
-        } => todo!(),
+        } => obj
+            .add_event("sessionDisconnected")
+            .add_string("connection_id", connection_id)
+            .add_string("user_name", user_name),
         PlayerEvent::SessionClientChanged {
             client_id,
             client_name,
             client_brand_name,
             client_model_name,
-        } => todo!(),
-        PlayerEvent::ShuffleChanged { shuffle } => todo!(),
-        PlayerEvent::RepeatChanged { repeat } => todo!(),
-        PlayerEvent::AutoPlayChanged { auto_play } => todo!(),
-        PlayerEvent::FilterExplicitContentChanged { filter } => todo!(),
+        } => obj
+            .add_event("sessionClientChanged")
+            .add_string("client_id", client_id)
+            .add_string("client_name", client_name)
+            .add_string("client_brand_name", client_brand_name)
+            .add_string("client_model_name", client_model_name),
+        PlayerEvent::ShuffleChanged { shuffle } => {
+            obj.add_event("shuffleChanged").add_bool("shuffle", shuffle)
+        }
+        PlayerEvent::RepeatChanged { repeat } => {
+            obj.add_event("repeatChanged").add_bool("repeat", repeat)
+        }
+        PlayerEvent::AutoPlayChanged { auto_play } => obj
+            .add_event("autoPlayChanged")
+            .add_bool("auto_play", auto_play),
+        PlayerEvent::FilterExplicitContentChanged { filter } => obj
+            .add_event("filterExplicitContentChanged")
+            .add_bool("filter", filter),
+    };
+
+    let js_obj = obj.finalize();
+    let ctx = obj.context;
+    return (js_obj, ctx);
+}
+
+pub struct StructToObj<'a, C: Context<'a>> {
+    context: C,
+    obj: Handle<'a, JsObject>,
+}
+
+impl<'a, C: Context<'a>> StructToObj<'a, C> {
+    fn new(mut context: C) -> Self {
+        let obj = context.empty_object();
+        Self { context, obj }
     }
-}
 
-fn default_to_obj<'a, C>(
-    mut cx: C,
-    event: String,
-    play_request_id: u64,
-    track_id: SpotifyId,
-) -> (Handle<'a, JsObject>, C)
-where
-    C: Context<'a>,
-{
-    let obj = cx.empty_object();
+    fn write_to_obj(&mut self, field_name: &str, field_value: Handle<JsValue>) {
+        self.obj
+            .set(&mut self.context, field_name, field_value)
+            .expect(stringify!(
+                "Failed to write field name {} to obj",
+                field_name
+            ));
+    }
 
-    let ev = cx.string(event);
-    obj.set(&mut cx, "event", ev).unwrap();
+    pub fn add_event(&mut self, value: &str) -> &mut Self {
+        self.add_string("event", value.to_string());
+        return self;
+    }
 
-    let pri = cx.number(play_request_id as f64);
-    obj.set(&mut cx, "play_request_id", pri).unwrap();
+    fn add_string(&mut self, field_name: &str, field_value: String) -> &mut Self {
+        let val = self.context.string(field_value).as_value(&mut self.context);
+        self.write_to_obj(field_name, val);
+        return self;
+    }
 
-    let ti = cx.string(track_id.to_uri().unwrap_or("".to_string()));
-    obj.set(&mut cx, "track_id", ti).unwrap();
+    fn add_bool(&mut self, field_name: &str, field_value: bool) -> &mut Self {
+        let val = self
+            .context
+            .boolean(field_value)
+            .as_value(&mut self.context);
+        self.write_to_obj(field_name, val);
+        return self;
+    }
 
-    return (obj, cx);
-}
+    fn add_spotify_id(&mut self, field_name: &str, field_value: SpotifyId) -> &mut Self {
+        let val = self
+            .context
+            .string(field_value.to_string())
+            .as_value(&mut self.context);
+        self.write_to_obj(field_name, val);
+        return self;
+    }
 
-fn volume_to_obj<'a, C>(mut cx: C, event: String, volume: u16) -> (Handle<'a, JsObject>, C)
-where
-    C: Context<'a>,
-{
-    let obj = cx.empty_object();
+    fn add_number(&mut self, field_name: &str, field_value: u64) -> &mut Self {
+        let val = self
+            .context
+            .number(field_value as u32)
+            .as_value(&mut self.context);
+        self.write_to_obj(field_name, val);
+        return self;
+    }
 
-    let ev = cx.string(event);
-    obj.set(&mut cx, "event", ev).unwrap();
-
-    let volume = cx.number(volume);
-    obj.set(&mut cx, "volume", volume).unwrap();
-
-    return (obj, cx);
-}
-
-fn track_change_to_obj<'a, C>(
-    mut cx: C,
-    event: String,
-    track: Box<AudioItem>,
-) -> (Handle<'a, JsObject>, C)
-where
-    C: Context<'a>,
-{
-    let obj = cx.empty_object();
-
-    let ev = cx.string(event);
-    obj.set(&mut cx, "event", ev).unwrap();
-
-    let oti = cx.string(track.track_id.to_uri().unwrap_or("".to_string()));
-    obj.set(&mut cx, "old_track_id", oti).unwrap();
-
-    return (obj, cx);
-}
-
-fn started_to_obj<'a, C>(
-    cx: C,
-    event: String,
-    play_request_id: u64,
-    track_id: SpotifyId,
-    position_ms: u32,
-) -> (Handle<'a, JsObject>, C)
-where
-    C: Context<'a>,
-{
-    let (obj, mut cx) = default_to_obj(cx, event, play_request_id, track_id);
-
-    let pm = cx.number(position_ms);
-    obj.set(&mut cx, "position_ms", pm).unwrap();
-
-    return (obj, cx);
-}
-
-fn play_pause_to_obj<'a, C>(
-    cx: C,
-    event: String,
-    play_request_id: u64,
-    track_id: SpotifyId,
-    position_ms: u32,
-) -> (Handle<'a, JsObject>, C)
-where
-    C: Context<'a>,
-{
-    let (obj, mut cx) = default_to_obj(cx, event, play_request_id, track_id);
-
-    let pm = cx.number(position_ms);
-    obj.set(&mut cx, "position_ms", pm).unwrap();
-
-    return (obj, cx);
+    fn finalize(&self) -> Handle<'a, JsObject> {
+        return self.obj;
+    }
 }

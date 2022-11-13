@@ -1,14 +1,31 @@
-use std::{sync::mpsc, thread};
+use std::{
+    sync::{
+        mpsc::{self, Receiver},
+        Arc, Mutex,
+    },
+    thread,
+};
 
-use librespot::playback::{mixer::Mixer, player::Player};
+use futures::TryFutureExt;
+use librespot::{
+    connect::spirc::Spirc,
+    playback::{
+        mixer::Mixer,
+        player::{Player, PlayerEvent, PlayerEventChannel},
+    },
+};
 use neon::{
-    prelude::{Channel, Context},
-    types::{Deferred, Finalize},
+    prelude::{Channel, Context, FunctionContext, Handle, Object, Root},
+    result::JsResult,
+    types::{Deferred, Finalize, JsFunction, JsUndefined},
 };
 use tokio::runtime::Builder;
 
-use crate::player::{
-    create_connect_config, create_credentials, create_player_config, create_session, new_player,
+use crate::{
+    player::{
+        create_connect_config, create_credentials, create_player_config, create_session, new_player,
+    },
+    utils::create_js_obj_from_event,
 };
 
 impl Finalize for JsPlayerWrapper {}
@@ -17,8 +34,7 @@ pub struct JsPlayerWrapper {
     tx: mpsc::Sender<Message>,
 }
 
-pub type Callback =
-    Box<dyn (FnOnce(&mut Player, Box<dyn Mixer>, &Channel, Deferred) -> Box<dyn Mixer>) + Send>;
+pub type Callback = Box<dyn (FnOnce(&mut Spirc, &Channel, Deferred)) + Send>;
 
 pub enum Message {
     Callback(Deferred, Callback),
@@ -36,6 +52,7 @@ impl JsPlayerWrapper {
 
         let callback_channel = cx.channel();
 
+        let channel = cx.channel();
         thread::spawn(move || {
             println!("Inside thread");
             let runtime = Builder::new_multi_thread()
@@ -46,25 +63,33 @@ impl JsPlayerWrapper {
 
             runtime.block_on(async {
                 let credentials = create_credentials();
-                let session = create_session(credentials.clone()).await;
+                let session = create_session().await;
                 let player_config = create_player_config();
+                let connect_config = create_connect_config();
 
-                let (mut player, mut mixer) =
+                let (player, mixer) =
                     new_player(credentials.clone(), session.clone(), player_config.clone());
+
+                let events_channel = player.get_player_event_channel();
+
+                let (spirc, spirc_task) = Spirc::new(
+                    connect_config.clone(),
+                    session.clone(),
+                    credentials.clone(),
+                    player,
+                    mixer,
+                )
+                .await
+                .unwrap();
+
+                JsPlayerWrapper::start_player_event_thread(channel, events_channel);
+                JsPlayerWrapper::listen_commands(rx, spirc, callback_channel);
 
                 // Panic thread if send fails
                 player_creation_tx.send(()).unwrap();
 
-                while let Ok(message) = rx.recv() {
-                    match message {
-                        Message::Callback(deferred, f) => {
-                            let m = f(&mut player, mixer, &callback_channel, deferred);
-                            mixer = m;
-                        }
-
-                        Message::Close => break,
-                    }
-                }
+                println!("watching spirc");
+                spirc_task.await;
             })
         });
 
@@ -76,6 +101,38 @@ impl JsPlayerWrapper {
         return None;
     }
 
+    pub fn start_player_event_thread(channel: Channel, mut event_channel: PlayerEventChannel) {
+        thread::spawn(move || loop {
+            let message = event_channel.blocking_recv();
+            if message.is_some() {
+                channel.send(move |mut cx| {
+                    let callback: Handle<JsFunction> = cx
+                        .global()
+                        .get(&mut cx, "_watch_player_events_global")
+                        .unwrap();
+                    let (obj, mut cx) = create_js_obj_from_event(cx, message.unwrap());
+                    let _: JsResult<JsUndefined> =
+                        callback.call_with(&mut cx).arg(obj).apply(&mut cx);
+                    Ok(())
+                });
+            }
+        });
+    }
+
+    pub fn listen_commands(rx: Receiver<Message>, mut spirc: Spirc, callback_channel: Channel) {
+        thread::spawn(move || {
+            while let Ok(message) = rx.recv() {
+                match message {
+                    Message::Callback(deferred, f) => {
+                        f(&mut spirc, &callback_channel, deferred);
+                    }
+
+                    Message::Close => break,
+                }
+            }
+        });
+    }
+
     pub fn close(&self) -> Result<(), mpsc::SendError<Message>> {
         self.tx.send(Message::Close)
     }
@@ -83,9 +140,7 @@ impl JsPlayerWrapper {
     pub fn send(
         &self,
         deferred: Deferred,
-        callback: impl (FnOnce(&mut Player, Box<dyn Mixer>, &Channel, Deferred) -> Box<dyn Mixer>)
-            + Send
-            + 'static,
+        callback: impl (FnOnce(&mut Spirc, &Channel, Deferred)) + Send + 'static,
     ) {
         let res = self
             .tx
@@ -96,5 +151,11 @@ impl JsPlayerWrapper {
                 res.err().unwrap().to_string()
             )
         }
+    }
+
+    pub fn set_player_events_listener(
+        &self,
+        callback: impl (FnOnce(PlayerEvent)) + Send + 'static,
+    ) {
     }
 }
