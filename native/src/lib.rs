@@ -90,18 +90,6 @@ fn pause(cx: FunctionContext) -> JsResult<JsPromise> {
     Ok(promise)
 }
 
-fn stop(cx: FunctionContext) -> JsResult<JsPromise> {
-    let promise = send_to_player(cx, move |player, channel, deferred| {
-        let res = player.pause();
-        deferred.settle_with(channel, move |mut cx| {
-            res.or_else(|err| cx.throw_error(err.to_string()))?;
-            Ok(cx.undefined())
-        });
-    });
-
-    Ok(promise)
-}
-
 fn seek(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let pos_ms = cx.argument::<JsNumber>(0)?.value(&mut cx);
 
@@ -143,7 +131,6 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("create_player", create_player)?;
     cx.export_function("play", play)?;
     cx.export_function("pause", pause)?;
-    cx.export_function("stop", stop)?;
     cx.export_function("seek", seek)?;
     cx.export_function("set_volume", set_volume)?;
     cx.export_function("close_player", close_player)?;
