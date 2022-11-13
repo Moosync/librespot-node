@@ -32,9 +32,7 @@ pub fn create_player_config() -> PlayerConfig {
 fn get_auth_type(auth_type: &str) -> AuthenticationType {
     match auth_type {
         "AUTHENTICATION_USER_PASS" => AuthenticationType::AUTHENTICATION_USER_PASS,
-        "AuthenticationType::AUTHENTICATION_USER_PASS" => {
-            AuthenticationType::AUTHENTICATION_USER_PASS
-        }
+        "AUTHENTICATION_STORED_SPOTIFY_CREDENTIALS" => AuthenticationType::AUTHENTICATION_USER_PASS,
         "AUTHENTICATION_STORED_FACEBOOK_CREDENTIALS" => {
             AuthenticationType::AUTHENTICATION_STORED_FACEBOOK_CREDENTIALS
         }
