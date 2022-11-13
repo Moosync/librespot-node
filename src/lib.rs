@@ -1,29 +1,15 @@
 // TODO: Use unwrap_or_... instead of unwraps
 
-use std::{
-    sync::{mpsc, Arc},
-    thread,
-};
-
+use constants::GLOBAL_JS_CALLBACK_METHOD;
 use js_player::JsPlayerWrapper;
-use librespot::{
-    connect::spirc::Spirc,
-    playback::{
-        mixer::Mixer,
-        player::{Player, PlayerEvent, PlayerEventChannel},
-    },
-};
+use librespot::connect::spirc::Spirc;
 use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
     result::{JsResult, NeonResult},
-    types::{Deferred, JsBoolean, JsBox, JsFunction, JsNumber, JsPromise, JsString, JsUndefined},
+    types::{Deferred, JsBox, JsFunction, JsNumber, JsPromise, JsUndefined},
 };
 
-use player::{load, set_backend_volume};
-use tokio::runtime::Builder;
-use utils::create_js_obj_from_event;
-
-use crate::player::start_discovery;
+mod constants;
 mod js_player;
 mod player;
 mod utils;
@@ -62,7 +48,7 @@ fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
 
     let global = cx.global();
     global
-        .set(&mut cx, "_watch_player_events_global", callback)
+        .set(&mut cx, GLOBAL_JS_CALLBACK_METHOD, callback)
         .unwrap();
 
     deferred.settle_with(&channel, move |mut cx| {
@@ -76,22 +62,13 @@ fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
     return Ok(promise);
 }
 
-// fn load_track(mut cx: FunctionContext) -> JsResult<JsPromise> {
-//     let track_id = cx.argument::<JsString>(0)?.value(&mut cx);
-//     let auto_play = cx.argument::<JsBoolean>(1)?.value(&mut cx);
-
-//     let promise = send_to_player(cx, move |spirc, _, channel, deferred| {
-//         let res = load(player, track_id.as_str(), auto_play);
-//         deferred.settle_with(channel, move |mut cx| Ok(cx.number(res as i32))); /* res is u64 (It shouldn't matter) */
-//     });
-
-//     Ok(promise)
-// }
-
 fn play(cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = send_to_player(cx, move |player, channel, deferred| {
-        player.play();
-        deferred.settle_with(channel, move |mut cx| Ok(cx.undefined()));
+        let res = player.play();
+        deferred.settle_with(channel, move |mut cx| {
+            res.or_else(|err| cx.throw_error(err.to_string()))?;
+            Ok(cx.undefined())
+        });
     });
 
     Ok(promise)
@@ -99,8 +76,11 @@ fn play(cx: FunctionContext) -> JsResult<JsPromise> {
 
 fn pause(cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = send_to_player(cx, move |player, channel, deferred| {
-        player.pause();
-        deferred.settle_with(channel, move |mut cx| Ok(cx.undefined()));
+        let res = player.pause();
+        deferred.settle_with(channel, move |mut cx| {
+            res.or_else(|err| cx.throw_error(err.to_string()))?;
+            Ok(cx.undefined())
+        });
     });
 
     Ok(promise)
@@ -108,8 +88,11 @@ fn pause(cx: FunctionContext) -> JsResult<JsPromise> {
 
 fn stop(cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = send_to_player(cx, move |player, channel, deferred| {
-        player.pause();
-        deferred.settle_with(channel, move |mut cx| Ok(cx.undefined()));
+        let res = player.pause();
+        deferred.settle_with(channel, move |mut cx| {
+            res.or_else(|err| cx.throw_error(err.to_string()))?;
+            Ok(cx.undefined())
+        });
     });
 
     Ok(promise)
@@ -119,8 +102,11 @@ fn seek(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let pos_ms = cx.argument::<JsNumber>(0)?.value(&mut cx);
 
     let promise = send_to_player(cx, move |player, channel, deferred| {
-        player.set_position_ms(pos_ms as u32);
-        deferred.settle_with(channel, move |mut cx| Ok(cx.undefined()));
+        let res = player.set_position_ms(pos_ms as u32);
+        deferred.settle_with(channel, move |mut cx| {
+            res.or_else(|err| cx.throw_error(err.to_string()))?;
+            Ok(cx.undefined())
+        });
     });
 
     Ok(promise)
@@ -129,8 +115,11 @@ fn seek(mut cx: FunctionContext) -> JsResult<JsPromise> {
 fn set_volume(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let volume = cx.argument::<JsNumber>(0)?.value(&mut cx);
     let promise = send_to_player(cx, move |player, channel, deferred| {
-        player.set_volume(volume as u16);
-        deferred.settle_with(channel, move |mut cx| Ok(cx.undefined()));
+        let res = player.set_volume(volume as u16);
+        deferred.settle_with(channel, move |mut cx| {
+            res.or_else(|err| cx.throw_error(err.to_string()))?;
+            Ok(cx.undefined())
+        });
     });
 
     Ok(promise)
@@ -148,16 +137,12 @@ fn close_player(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 #[neon::main]
 pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("create_player", create_player)?;
-    // cx.export_function("load_track", load_track)?;
     cx.export_function("play", play)?;
     cx.export_function("pause", pause)?;
     cx.export_function("stop", stop)?;
     cx.export_function("seek", seek)?;
     cx.export_function("set_volume", set_volume)?;
-    // cx.export_function("watch_command_events", watch_player_events)?;
     cx.export_function("close_player", close_player)?;
-
-    // start_discovery();
 
     Ok(())
 }

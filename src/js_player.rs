@@ -1,27 +1,18 @@
 use std::{
-    sync::{
-        mpsc::{self, Receiver},
-        Arc, Mutex,
-    },
+    sync::mpsc::{self, Receiver},
     thread,
 };
 
-use futures::TryFutureExt;
-use librespot::{
-    connect::spirc::Spirc,
-    playback::{
-        mixer::Mixer,
-        player::{Player, PlayerEvent, PlayerEventChannel},
-    },
-};
+use librespot::{connect::spirc::Spirc, playback::player::PlayerEventChannel};
 use neon::{
-    prelude::{Channel, Context, FunctionContext, Handle, Object, Root},
+    prelude::{Channel, Context, Handle, Object},
     result::JsResult,
     types::{Deferred, Finalize, JsFunction, JsUndefined},
 };
 use tokio::runtime::Builder;
 
 use crate::{
+    constants::GLOBAL_JS_CALLBACK_METHOD,
     player::{
         create_connect_config, create_credentials, create_player_config, create_session, new_player,
     },
@@ -54,7 +45,6 @@ impl JsPlayerWrapper {
 
         let channel = cx.channel();
         thread::spawn(move || {
-            println!("Inside thread");
             let runtime = Builder::new_multi_thread()
                 .enable_io()
                 .enable_time()
@@ -67,8 +57,7 @@ impl JsPlayerWrapper {
                 let player_config = create_player_config();
                 let connect_config = create_connect_config();
 
-                let (player, mixer) =
-                    new_player(credentials.clone(), session.clone(), player_config.clone());
+                let (player, mixer) = new_player(session.clone(), player_config.clone());
 
                 let events_channel = player.get_player_event_channel();
 
@@ -88,13 +77,11 @@ impl JsPlayerWrapper {
                 // Panic thread if send fails
                 player_creation_tx.send(()).unwrap();
 
-                println!("watching spirc");
                 spirc_task.await;
             })
         });
 
         while let Ok(_) = player_creation_rx.recv() {
-            println!("Created player");
             return Some(Self { tx });
         }
 
@@ -106,10 +93,8 @@ impl JsPlayerWrapper {
             let message = event_channel.blocking_recv();
             if message.is_some() {
                 channel.send(move |mut cx| {
-                    let callback: Handle<JsFunction> = cx
-                        .global()
-                        .get(&mut cx, "_watch_player_events_global")
-                        .unwrap();
+                    let callback: Handle<JsFunction> =
+                        cx.global().get(&mut cx, GLOBAL_JS_CALLBACK_METHOD).unwrap();
                     let (obj, mut cx) = create_js_obj_from_event(cx, message.unwrap());
                     let _: JsResult<JsUndefined> =
                         callback.call_with(&mut cx).arg(obj).apply(&mut cx);
@@ -151,11 +136,5 @@ impl JsPlayerWrapper {
                 res.err().unwrap().to_string()
             )
         }
-    }
-
-    pub fn set_player_events_listener(
-        &self,
-        callback: impl (FnOnce(PlayerEvent)) + Send + 'static,
-    ) {
     }
 }
