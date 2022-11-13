@@ -50,7 +50,7 @@ pub fn create_credentials(username: String, password: String, auth_type: String)
     }
 }
 
-pub async fn create_session() -> Session {
+pub fn create_session() -> Session {
     let session_config = SessionConfig::default();
 
     let session = Session::new(session_config, None);

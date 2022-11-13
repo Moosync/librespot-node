@@ -62,7 +62,7 @@ impl JsPlayerWrapper {
 
             runtime.block_on(async {
                 let credentials = create_credentials(username, password, auth_type);
-                let session = create_session().await.clone();
+                let session = create_session().clone();
                 let player_config = create_player_config();
                 let connect_config = create_connect_config();
 
@@ -81,6 +81,10 @@ impl JsPlayerWrapper {
                 )
                 .await
                 .unwrap();
+
+                // let token = session
+                //     .token_provider()
+                //     .get_token("user-read-playback-state,user-modify-playback-state,user-read-currently-playing").await;
 
                 JsPlayerWrapper::start_player_event_thread(channel, events_channel);
                 JsPlayerWrapper::listen_commands(rx, spirc, callback_channel);
