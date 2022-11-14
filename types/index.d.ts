@@ -12,6 +12,7 @@ export interface LibrespotModule {
   set_volume: (volume: number) => Promise<void>
   close_player: () => Promise<void>
   get_device_id: () => string
+  get_token: (scopes: string) => Promise<Token>
 }
 
 export interface AuthDetails {
@@ -147,3 +148,31 @@ export type PlayerEvent<T extends PlayerEventTypes | string> = {
   : T extends "PlayerInitialized"
   ? undefined
   : unknown)
+
+export type TokenScope =
+  | "ugc-image-upload"
+  | "user-read-playback-state"
+  | "user-modify-playback-state"
+  | "user-read-currently-playing"
+  | "app-remote-control"
+  | "streaming"
+  | "playlist-read-private"
+  | "playlist-read-collaborative"
+  | "playlist-modify-private"
+  | "playlist-modify-public"
+  | "user-follow-modify"
+  | "user-follow-read"
+  | "user-read-playback-position"
+  | "user-top-read"
+  | "user-read-recently-played"
+  | "user-library-modify"
+  | "user-library-read"
+  | "user-read-email"
+  | "user-read-private"
+
+export type Token = {
+  access_token: string
+  token_type: "Bearer"
+  expires_in: number
+  scopes: TokenScope[]
+}

@@ -5,6 +5,7 @@ import {
   AuthDetails,
   PlayerEvent,
   PlayerEventTypes,
+  TokenScope,
 } from "../types"
 
 const librespotModule: LibrespotModule = bindings("librespot.node")
@@ -92,4 +93,24 @@ export class SpotifyPlayer {
   public getDeviceId() {
     return this.device_id
   }
+
+  public async getToken(scopes?: TokenScope[]) {
+    scopes = scopes || [
+      "playlist-read-collaborative",
+      "user-follow-read",
+      "user-library-read",
+      "user-top-read",
+      "user-read-recently-played",
+    ]
+    const res = await librespotModule.get_token.call(
+      this.playerInstance,
+      scopes.join(",")
+    )
+
+    res.scopes = (res.scopes as unknown as string).split(",") as TokenScope[]
+
+    return res
+  }
 }
+
+setInterval(() => {})

@@ -1,8 +1,9 @@
 // TODO: Use unwrap_or_... instead of unwraps
 
 use constants::GLOBAL_JS_CALLBACK_METHOD;
+use futures::executor::block_on;
 use js_player::JsPlayerWrapper;
-use librespot::connect::spirc::Spirc;
+use librespot::{connect::spirc::Spirc, core::Session};
 use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
     result::{JsResult, NeonResult},
@@ -10,6 +11,7 @@ use neon::{
         Deferred, JsBox, JsFunction, JsNumber, JsPromise, JsString, JsUndefined, JsValue, Value,
     },
 };
+use utils::token_to_obj;
 
 mod constants;
 mod js_player;
@@ -18,7 +20,7 @@ mod utils;
 
 fn send_to_player(
     mut cx: FunctionContext,
-    callback: impl (FnOnce(&mut Spirc, &Channel, Deferred)) + Send + 'static,
+    callback: impl (FnOnce(&mut Spirc, Session, &Channel, Deferred)) + Send + 'static,
 ) -> Handle<JsPromise> {
     let player_wrapper = cx
         .this()
@@ -70,7 +72,7 @@ fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
 }
 
 fn play(cx: FunctionContext) -> JsResult<JsPromise> {
-    let promise = send_to_player(cx, move |player, channel, deferred| {
+    let promise = send_to_player(cx, move |player, _, channel, deferred| {
         let res = player.play();
         deferred.settle_with(channel, move |mut cx| {
             res.or_else(|err| cx.throw_error(err.to_string()))?;
@@ -82,7 +84,7 @@ fn play(cx: FunctionContext) -> JsResult<JsPromise> {
 }
 
 fn pause(cx: FunctionContext) -> JsResult<JsPromise> {
-    let promise = send_to_player(cx, move |player, channel, deferred| {
+    let promise = send_to_player(cx, move |player, _, channel, deferred| {
         let res = player.pause();
         deferred.settle_with(channel, move |mut cx| {
             res.or_else(|err| cx.throw_error(err.to_string()))?;
@@ -96,7 +98,7 @@ fn pause(cx: FunctionContext) -> JsResult<JsPromise> {
 fn seek(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let pos_ms = cx.argument::<JsNumber>(0)?.value(&mut cx);
 
-    let promise = send_to_player(cx, move |player, channel, deferred| {
+    let promise = send_to_player(cx, move |player, _, channel, deferred| {
         let res = player.set_position_ms(pos_ms as u32);
         deferred.settle_with(channel, move |mut cx| {
             res.or_else(|err| cx.throw_error(err.to_string()))?;
@@ -109,7 +111,7 @@ fn seek(mut cx: FunctionContext) -> JsResult<JsPromise> {
 
 fn set_volume(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let volume = cx.argument::<JsNumber>(0)?.value(&mut cx);
-    let promise = send_to_player(cx, move |player, channel, deferred| {
+    let promise = send_to_player(cx, move |player, _, channel, deferred| {
         let res = player.set_volume(volume as u16);
         deferred.settle_with(channel, move |mut cx| {
             res.or_else(|err| cx.throw_error(err.to_string()))?;
@@ -143,6 +145,25 @@ fn get_device_id(mut cx: FunctionContext) -> JsResult<JsValue> {
     return Ok(cx.undefined().as_value(&mut cx));
 }
 
+fn get_token(mut cx: FunctionContext) -> JsResult<JsPromise> {
+    let scopes = cx.argument::<JsString>(0)?.value(&mut cx);
+    let promise = send_to_player(cx, move |_, session, channel, deferred| {
+        deferred.settle_with(channel, move |mut cx| -> Result<Handle<JsValue>, _> {
+            let res = block_on(session.token_provider().get_token(scopes.as_str()));
+
+            match res {
+                Ok(t) => {
+                    let (obj, mut cx) = token_to_obj(cx, t);
+                    Ok(obj.as_value(&mut cx))
+                }
+                Err(_) => Ok(cx.undefined().as_value(&mut cx)),
+            }
+        });
+    });
+
+    Ok(promise)
+}
+
 #[neon::main]
 pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("create_player", create_player)?;
@@ -152,6 +173,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("set_volume", set_volume)?;
     cx.export_function("close_player", close_player)?;
     cx.export_function("get_device_id", get_device_id)?;
+    cx.export_function("get_token", get_token)?;
 
     Ok(())
 }

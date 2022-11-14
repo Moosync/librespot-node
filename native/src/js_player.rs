@@ -3,7 +3,7 @@ use std::{
     thread,
 };
 
-use librespot::{connect::spirc::Spirc, playback::player::PlayerEventChannel};
+use librespot::{connect::spirc::Spirc, core::Session, playback::player::PlayerEventChannel};
 use neon::{
     prelude::{Channel, Context, Handle, Object},
     result::JsResult,
@@ -26,7 +26,7 @@ pub struct JsPlayerWrapper {
     device_id: String,
 }
 
-pub type Callback = Box<dyn (FnOnce(&mut Spirc, &Channel, Deferred)) + Send>;
+pub type Callback = Box<dyn (FnOnce(&mut Spirc, Session, &Channel, Deferred)) + Send>;
 
 pub enum Message {
     Callback(Deferred, Callback),
@@ -82,12 +82,8 @@ impl JsPlayerWrapper {
                 .await
                 .unwrap();
 
-                // let token = session
-                //     .token_provider()
-                //     .get_token("user-read-playback-state,user-modify-playback-state,user-read-currently-playing").await;
-
                 JsPlayerWrapper::start_player_event_thread(channel, events_channel);
-                JsPlayerWrapper::listen_commands(rx, spirc, callback_channel);
+                JsPlayerWrapper::listen_commands(rx, spirc, session.clone(), callback_channel);
 
                 // Panic thread if send fails
                 player_creation_tx.send(device_id).unwrap();
@@ -119,12 +115,17 @@ impl JsPlayerWrapper {
         });
     }
 
-    pub fn listen_commands(rx: Receiver<Message>, mut spirc: Spirc, callback_channel: Channel) {
+    pub fn listen_commands(
+        rx: Receiver<Message>,
+        mut spirc: Spirc,
+        session: Session,
+        callback_channel: Channel,
+    ) {
         thread::spawn(move || {
             while let Ok(message) = rx.recv() {
                 match message {
                     Message::Callback(deferred, f) => {
-                        f(&mut spirc, &callback_channel, deferred);
+                        f(&mut spirc, session.clone(), &callback_channel, deferred);
                     }
 
                     Message::Close => break,
@@ -140,7 +141,7 @@ impl JsPlayerWrapper {
     pub fn send(
         &self,
         deferred: Deferred,
-        callback: impl (FnOnce(&mut Spirc, &Channel, Deferred)) + Send + 'static,
+        callback: impl (FnOnce(&mut Spirc, Session, &Channel, Deferred)) + Send + 'static,
     ) {
         let res = self
             .tx

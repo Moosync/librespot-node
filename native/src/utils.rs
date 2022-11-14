@@ -1,4 +1,7 @@
-use librespot::{core::spotify_id::SpotifyId, playback::player::PlayerEvent};
+use librespot::{
+    core::{spotify_id::SpotifyId, token::Token},
+    playback::player::PlayerEvent,
+};
 use neon::{
     prelude::{Context, Handle, Object},
     types::{JsObject, JsValue, Value},
@@ -15,7 +18,7 @@ where
             track_id,
         } => obj
             .add_event("Stopped")
-            .add_number("play_request_id", play_request_id)
+            .add_u64("play_request_id", play_request_id)
             .add_spotify_id("track_id", track_id),
         PlayerEvent::Loading {
             play_request_id,
@@ -23,9 +26,9 @@ where
             position_ms,
         } => obj
             .add_event("Loading")
-            .add_number("play_request_id", play_request_id)
+            .add_u64("play_request_id", play_request_id)
             .add_spotify_id("track_id", track_id)
-            .add_number("position_ms", position_ms as u64),
+            .add_u64("position_ms", position_ms as u64),
 
         PlayerEvent::Preloading { track_id } => obj
             .add_event("Preloading")
@@ -36,60 +39,60 @@ where
             position_ms,
         } => obj
             .add_event("Playing")
-            .add_number("play_request_id", play_request_id)
+            .add_u64("play_request_id", play_request_id)
             .add_spotify_id("track_id", track_id)
-            .add_number("position_ms", position_ms as u64),
+            .add_u64("position_ms", position_ms as u64),
         PlayerEvent::Paused {
             play_request_id,
             track_id,
             position_ms,
         } => obj
             .add_event("Paused")
-            .add_number("play_request_id", play_request_id)
+            .add_u64("play_request_id", play_request_id)
             .add_spotify_id("track_id", track_id)
-            .add_number("position_ms", position_ms as u64),
+            .add_u64("position_ms", position_ms as u64),
         PlayerEvent::TimeToPreloadNextTrack {
             play_request_id,
             track_id,
         } => obj
             .add_event("TimeToPreloadNextTrack")
-            .add_number("play_request_id", play_request_id)
+            .add_u64("play_request_id", play_request_id)
             .add_spotify_id("track_id", track_id),
         PlayerEvent::EndOfTrack {
             play_request_id,
             track_id,
         } => obj
             .add_event("EndOfTrack")
-            .add_number("play_request_id", play_request_id)
+            .add_u64("play_request_id", play_request_id)
             .add_spotify_id("track_id", track_id),
         PlayerEvent::Unavailable {
             play_request_id,
             track_id,
         } => obj
             .add_event("Unavailable")
-            .add_number("play_request_id", play_request_id)
+            .add_u64("play_request_id", play_request_id)
             .add_spotify_id("track_id", track_id),
         PlayerEvent::VolumeChanged { volume } => obj
             .add_event("VolumeChanged")
-            .add_number("volume", volume as u64),
+            .add_u64("volume", volume as u64),
         PlayerEvent::PositionCorrection {
             play_request_id,
             track_id,
             position_ms,
         } => obj
             .add_event("PositionCorrection")
-            .add_number("play_request_id", play_request_id)
+            .add_u64("play_request_id", play_request_id)
             .add_spotify_id("track_id", track_id)
-            .add_number("position_ms", position_ms as u64),
+            .add_u64("position_ms", position_ms as u64),
         PlayerEvent::Seeked {
             play_request_id,
             track_id,
             position_ms,
         } => obj
             .add_event("Seeked")
-            .add_number("play_request_id", play_request_id)
+            .add_u64("play_request_id", play_request_id)
             .add_spotify_id("track_id", track_id)
-            .add_number("position_ms", position_ms as u64),
+            .add_u64("position_ms", position_ms as u64),
         PlayerEvent::TrackChanged { audio_item } => obj
             .add_event("TrackChanged")
             .add_string("audio_item", audio_item.track_id.to_string()),
@@ -187,10 +190,19 @@ impl<'a, C: Context<'a>> StructToObj<'a, C> {
         return self;
     }
 
-    fn add_number(&mut self, field_name: &str, field_value: u64) -> &mut Self {
+    fn add_u64(&mut self, field_name: &str, field_value: u64) -> &mut Self {
         let val = self
             .context
-            .number(field_value as u32)
+            .number(field_value as f64)
+            .as_value(&mut self.context);
+        self.write_to_obj(field_name, val);
+        return self;
+    }
+
+    fn add_u128(&mut self, field_name: &str, field_value: u128) -> &mut Self {
+        let val = self
+            .context
+            .number(field_value as f64)
             .as_value(&mut self.context);
         self.write_to_obj(field_name, val);
         return self;
@@ -199,4 +211,20 @@ impl<'a, C: Context<'a>> StructToObj<'a, C> {
     fn finalize(&self) -> Handle<'a, JsObject> {
         return self.obj;
     }
+}
+
+pub fn token_to_obj<'a, C>(cx: C, token: Token) -> (Handle<'a, JsObject>, C)
+where
+    C: Context<'a>,
+{
+    let mut obj = StructToObj::new(cx);
+    obj.add_string("access_token", token.access_token)
+        .add_string("token_type", token.token_type)
+        .add_u128("expires_in", token.expires_in.as_millis())
+        .add_string("scopes", token.scopes.join(","));
+
+    let js_obj = obj.finalize();
+    let ctx = obj.context;
+
+    return (js_obj, ctx);
 }
