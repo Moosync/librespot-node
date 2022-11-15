@@ -30,6 +30,7 @@ export interface ConstructorConfig {
   save_tokens?: boolean
   cache_path?: PathLike
   initial_volume?: { volume: number; raw?: boolean }
+  pos_update_interval?: number
 }
 
 export interface AuthDetails {
@@ -64,6 +65,7 @@ export type PlayerEventTypes =
   | "RepeatChanged"
   | "AutoPlayChanged"
   | "PlayerInitialized"
+  | "TimeUpdated"
 
 export type PlayerEvent<T extends PlayerEventTypes | string> = {
   event: T

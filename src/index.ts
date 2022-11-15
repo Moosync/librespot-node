@@ -26,6 +26,8 @@ const DEFAULT_SCOPES: TokenScope[] = [
   "user-modify-playback-state",
 ]
 
+const POSITION_UPDATE_INTERVAL = 500
+
 class TokenHandler {
   private tokenMap: Token[] = []
   private filePath: PathLike
@@ -68,6 +70,30 @@ class TokenHandler {
     }
   }
 }
+
+class PositionHolder {
+  public position = 0
+  private positionListener: ReturnType<typeof setInterval> | undefined
+  private updateInterval: number
+
+  constructor(updateInterval?: number) {
+    this.updateInterval = updateInterval || POSITION_UPDATE_INTERVAL
+  }
+
+  public setListener() {
+    this.clearListener()
+
+    this.positionListener = setInterval(() => {
+      this.position += this.updateInterval
+    }, this.updateInterval)
+  }
+
+  public clearListener() {
+    if (this.positionListener) {
+      clearInterval(this.positionListener)
+    }
+  }
+}
 export class SpotifyPlayer {
   private playerInstance: PlayerNativeObject | undefined
 
@@ -76,6 +102,7 @@ export class SpotifyPlayer {
   private eventEmitter = new EventEmitter()
   private _isInitialized = false
   private tokenHandler: TokenHandler
+  private _positionHolder: PositionHolder
 
   private saveToken: boolean
 
@@ -102,6 +129,7 @@ export class SpotifyPlayer {
     this.tokenHandler = new TokenHandler(
       config.cache_path ?? path.join(__dirname, "token_dump")
     )
+    this._positionHolder = new PositionHolder(config.pos_update_interval)
     this.saveToken = config.save_tokens ?? false
   }
 
@@ -117,6 +145,24 @@ export class SpotifyPlayer {
         this.setVolume(initial_volume.volume, initial_volume.raw)
       })
     }
+
+    this.addListener("Playing", (e) => {
+      this._positionHolder.setListener()
+      this._positionHolder.position = e.position_ms
+    })
+
+    this.addListener("Paused", (e) => {
+      this._positionHolder.clearListener()
+      this._positionHolder.position = e.position_ms
+    })
+
+    this.addListener("PositionCorrection", (e) => {
+      this._positionHolder.position = e.position_ms
+    })
+
+    this.addListener("TrackChanged", () => {
+      this._positionHolder.position = 0
+    })
   }
 
   public get isInitialized() {
@@ -137,6 +183,10 @@ export class SpotifyPlayer {
 
   public async seek(posMs: number) {
     await librespotModule.seek.call(this.playerInstance, posMs)
+  }
+
+  public getCurrentPosition() {
+    return this._positionHolder.position
   }
 
   public async setVolume(volume: number, raw = false) {
@@ -228,6 +278,7 @@ export class SpotifyPlayer {
 
   public removeAllListeners() {
     this.eventEmitter.removeAllListeners()
+    this.registerListeners(undefined)
   }
 
   public getDeviceId() {
