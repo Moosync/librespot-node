@@ -94,10 +94,28 @@ class PositionHolder {
     }
   }
 }
+
+function safe_execution(
+  target: Object,
+  propertyKey: string,
+  descriptor: TypedPropertyDescriptor<any>
+) {
+  const originalMethod = descriptor.value
+
+  descriptor.value = function (...args: unknown[]) {
+    if ((this as SpotifyPlayer).isInitialized) {
+      originalMethod.call(this, ...args)
+    } else {
+      throw new Error("Cannot call method before player has initialized")
+    }
+  }
+
+  return descriptor
+}
+
 export class SpotifyPlayer {
   private playerInstance: PlayerNativeObject | undefined
 
-  // TODO: Error out if player isn't initialized
   private device_id!: string
   private eventEmitter = new EventEmitter()
   private _isInitialized = false
@@ -173,14 +191,17 @@ export class SpotifyPlayer {
     this.eventEmitter.emit(event.event, event)
   }
 
+  @safe_execution
   public async play() {
     await librespotModule.play.call(this.playerInstance)
   }
 
+  @safe_execution
   public async pause() {
     await librespotModule.pause.call(this.playerInstance)
   }
 
+  @safe_execution
   public async seek(posMs: number) {
     await librespotModule.seek.call(this.playerInstance, posMs)
   }
@@ -189,6 +210,7 @@ export class SpotifyPlayer {
     return this._positionHolder.position
   }
 
+  @safe_execution
   public async setVolume(volume: number, raw = false) {
     let parsedVolume: number = volume
     if (!raw) {
@@ -206,6 +228,7 @@ export class SpotifyPlayer {
     return (this._volume / 65535) * 100
   }
 
+  @safe_execution
   public async load(trackURIs: string | string[]) {
     const token = await this.getToken()
     if (!token) {
@@ -285,6 +308,7 @@ export class SpotifyPlayer {
     return this.device_id
   }
 
+  @safe_execution
   public async getToken(...scopes: TokenScope[]) {
     scopes = scopes && scopes.length > 0 ? scopes : DEFAULT_SCOPES
 
