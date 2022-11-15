@@ -66,6 +66,7 @@ export type PlayerEventTypes =
   | "AutoPlayChanged"
   | "PlayerInitialized"
   | "TimeUpdated"
+  | "InitializationError"
 
 export type PlayerEvent<T extends PlayerEventTypes | string> = {
   event: T
@@ -166,6 +167,8 @@ export type PlayerEvent<T extends PlayerEventTypes | string> = {
     }
   : T extends "PlayerInitialized"
   ? undefined
+  : T extends "InitializationError"
+  ? { error: unknown }
   : unknown)
 
 export type TokenScope =

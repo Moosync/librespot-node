@@ -138,12 +138,18 @@ export class SpotifyPlayer {
       )
       .then((val) => {
         this.playerInstance = val
-        this.device_id = librespotModule.get_device_id.call(val)
+        this.device_id = this.getDeviceId()
         this.registerListeners(config.initial_volume)
-      })
-      .then(() => {
         this._isInitialized = true
-        this.eventEmitter.emit("PlayerInitialized")
+        this.eventEmitter.emit("PlayerInitialized", {
+          event: "PlayerInitialized",
+        })
+      })
+      .catch((e) => {
+        this.eventEmitter.emit("InitializationError", {
+          event: "InitializationError",
+          error: e,
+        })
       })
 
     this.tokenHandler = new TokenHandler(
