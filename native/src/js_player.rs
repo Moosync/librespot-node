@@ -46,6 +46,7 @@ impl JsPlayerWrapper {
         let (tx, rx) = mpsc::channel::<Message>();
 
         let (player_creation_tx, player_creation_rx) = mpsc::channel::<String>();
+        let (close_tx, close_rx) = mpsc::channel::<()>();
 
         let mut callback_channel = cx.channel();
         callback_channel.unref(cx);
@@ -82,8 +83,14 @@ impl JsPlayerWrapper {
                 .await
                 .unwrap();
 
-                JsPlayerWrapper::start_player_event_thread(channel, events_channel);
-                JsPlayerWrapper::listen_commands(rx, spirc, session.clone(), callback_channel);
+                JsPlayerWrapper::start_player_event_thread(channel, events_channel, close_rx);
+                JsPlayerWrapper::listen_commands(
+                    rx,
+                    spirc,
+                    session.clone(),
+                    close_tx,
+                    callback_channel,
+                );
 
                 // Panic thread if send fails
                 player_creation_tx.send(device_id).unwrap();
@@ -99,8 +106,18 @@ impl JsPlayerWrapper {
         return None;
     }
 
-    pub fn start_player_event_thread(channel: Channel, mut event_channel: PlayerEventChannel) {
+    pub fn start_player_event_thread(
+        channel: Channel,
+        mut event_channel: PlayerEventChannel,
+        close_rx: mpsc::Receiver<()>,
+    ) {
         thread::spawn(move || loop {
+            let close_message = close_rx.try_recv();
+            match close_message {
+                Ok(_) => break,
+                Err(_) => {}
+            }
+
             let message = event_channel.blocking_recv();
             if message.is_some() {
                 channel.send(move |mut cx| {
@@ -119,6 +136,7 @@ impl JsPlayerWrapper {
         rx: Receiver<Message>,
         mut spirc: Spirc,
         session: Session,
+        close_tx: mpsc::Sender<()>,
         callback_channel: Channel,
     ) {
         thread::spawn(move || {
@@ -128,7 +146,11 @@ impl JsPlayerWrapper {
                         f(&mut spirc, session.clone(), &callback_channel, deferred);
                     }
 
-                    Message::Close => break,
+                    Message::Close => {
+                        close_tx.send(()).unwrap();
+                        spirc.shutdown().unwrap();
+                        break;
+                    }
                 }
             }
         });
