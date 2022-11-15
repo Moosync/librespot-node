@@ -52,8 +52,7 @@ fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let callback = cx.argument::<JsFunction>(3)?;
 
     let (deferred, promise) = cx.promise();
-    let mut channel = cx.channel();
-    channel.unref(&mut cx);
+    let channel = cx.channel();
 
     let global = cx.global();
     global
