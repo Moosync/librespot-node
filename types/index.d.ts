@@ -1,3 +1,5 @@
+import { PathLike } from "fs"
+
 export interface LibrespotModule {
   create_player: (
     username: string,
@@ -26,6 +28,7 @@ interface FetchConfig {
 export interface ConstructorConfig {
   auth: AuthDetails
   save_tokens?: boolean
+  cache_path?: PathLike
 }
 
 export interface AuthDetails {

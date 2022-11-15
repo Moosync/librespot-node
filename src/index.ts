@@ -11,6 +11,7 @@ import path from "path"
 import { readFile, writeFile } from "fs/promises"
 import { request } from "./utils"
 import assert from "assert"
+import { PathLike } from "fs"
 
 const librespotModule: LibrespotModule = bindings("librespot.node")
 
@@ -27,7 +28,11 @@ const DEFAULT_SCOPES: TokenScope[] = [
 
 class TokenHandler {
   private tokenMap: Token[] = []
-  private filePath = path.join(__dirname, "token_dump")
+  private filePath: PathLike
+
+  constructor(filePath: PathLike) {
+    this.filePath = filePath
+  }
 
   private async dumpFile() {
     await writeFile(this.filePath, JSON.stringify(this.tokenMap))
@@ -70,7 +75,7 @@ export class SpotifyPlayer {
   private device_id!: string
   private eventEmitter = new EventEmitter()
   private _isInitialized = false
-  private tokenHandler = new TokenHandler()
+  private tokenHandler: TokenHandler
 
   private saveToken: boolean
 
@@ -90,6 +95,9 @@ export class SpotifyPlayer {
         this.eventEmitter.emit("PlayerInitialized")
       })
 
+    this.tokenHandler = new TokenHandler(
+      config.cache_path ?? path.join(__dirname, "token_dump")
+    )
     this.saveToken = config.save_tokens ?? false
   }
 
@@ -99,7 +107,6 @@ export class SpotifyPlayer {
 
   private player_event_callback(event: PlayerEvent<string>) {
     this.eventEmitter.emit(event.event, event)
-    console.log(event)
   }
 
   public async play() {
