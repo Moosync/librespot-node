@@ -3,7 +3,6 @@ import EventEmitter from "events"
 import { Token, ConstructorConfig, FetchConfig } from "../types/index"
 import {
   LibrespotModule,
-  AuthDetails,
   PlayerEvent,
   PlayerEventTypes,
   TokenScope,
