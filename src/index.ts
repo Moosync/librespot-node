@@ -11,6 +11,7 @@ import {
 import path from "path"
 import { readFile, writeFile } from "fs/promises"
 import { request } from "./utils"
+import assert from "assert"
 
 const librespotModule: LibrespotModule = bindings("librespot.node")
 
@@ -26,7 +27,7 @@ const DEFAULT_SCOPES: TokenScope[] = [
 ]
 
 class TokenHandler {
-  private tokenMap: Record<string, Token> = {}
+  private tokenMap: Token[] = []
   private filePath = path.join(__dirname, "token_dump")
 
   private async dumpFile() {
@@ -38,28 +39,36 @@ class TokenHandler {
       this.tokenMap = JSON.parse(
         await readFile(this.filePath, { encoding: "utf-8" })
       )
+      assert(Array.isArray(this.tokenMap))
     } catch (e) {
       console.error("Failed to parse token store", e)
-      this.tokenMap = {}
+      this.tokenMap = []
     }
   }
 
   public async addToken(token: Token) {
-    this.tokenMap[token.scopes.join(",")] = token
+    await this.readFile()
+    this.tokenMap.push(token)
     await this.dumpFile()
   }
 
-  public async getToken(scopes: string) {
+  public async getToken(scopes: TokenScope[]) {
     await this.readFile()
-    const token = this.tokenMap[scopes]
-    if (token.expiry_from_epoch > Date.now()) {
-      return token
+    for (const token of this.tokenMap) {
+      // Check if required scopes are already cached
+      if (scopes.some((val) => token.scopes.includes(val)))
+        if (token.expiry_from_epoch > Date.now()) {
+          // Check if the matching token is not expired
+          return token
+        }
     }
   }
 }
 export class SpotifyPlayer {
   private playerInstance: PlayerNativeObject | undefined
-  private device_id: string | undefined
+
+  // TODO: Error out if player isn't initialized
+  private device_id!: string
   private eventEmitter = new EventEmitter()
   private _isInitialized = false
   private tokenHandler = new TokenHandler()
@@ -116,13 +125,7 @@ export class SpotifyPlayer {
   }
 
   public async load(trackURIs: string | string[]) {
-    if (!this.device_id) {
-      throw Error(
-        "Device ID is missing. Player probably has not been initialized yet"
-      )
-    }
-
-    const token = await this.getToken(["user-modify-playback-state"])
+    const token = await this.getToken()
 
     if (!token) {
       throw Error("Failed to get a valid access token")
@@ -169,11 +172,11 @@ export class SpotifyPlayer {
 
         console.log(options)
 
-        const resp = await request(
+        await request<void>(
           "https://api.spotify.com/v1/me/player/play",
           options
         )
-        // // console.log(resp)
+        // console.log(resp)
       }
     }
   }
@@ -207,24 +210,24 @@ export class SpotifyPlayer {
     return this.device_id
   }
 
-  public async getToken(scopes?: TokenScope[], save_token = this.saveToken) {
-    const parsedScopes = (scopes || DEFAULT_SCOPES).join(",")
+  public async getToken(...scopes: TokenScope[]) {
+    scopes = scopes && scopes.length > 0 ? scopes : DEFAULT_SCOPES
 
-    const cachedToken = await this.tokenHandler.getToken(parsedScopes)
+    const cachedToken = await this.tokenHandler.getToken(scopes)
     if (cachedToken) {
       return cachedToken
     }
 
     const res = await librespotModule.get_token.call(
       this.playerInstance,
-      parsedScopes
+      scopes.join(",")
     )
 
     if (res) {
       res.scopes = (res.scopes as unknown as string).split(",") as TokenScope[]
       res.expiry_from_epoch = Date.now() + res.expires_in
 
-      if (save_token) {
+      if (this.saveToken) {
         await this.tokenHandler.addToken(res)
       }
     }
