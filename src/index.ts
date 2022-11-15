@@ -79,6 +79,8 @@ export class SpotifyPlayer {
 
   private saveToken: boolean
 
+  private _volume = 0
+
   constructor(config: ConstructorConfig) {
     librespotModule
       .create_player(
@@ -90,7 +92,9 @@ export class SpotifyPlayer {
       .then((val) => {
         this.playerInstance = val
         this.device_id = librespotModule.get_device_id.call(val)
-
+        this.registerListeners(config.initial_volume)
+      })
+      .then(() => {
         this._isInitialized = true
         this.eventEmitter.emit("PlayerInitialized")
       })
@@ -99,6 +103,20 @@ export class SpotifyPlayer {
       config.cache_path ?? path.join(__dirname, "token_dump")
     )
     this.saveToken = config.save_tokens ?? false
+  }
+
+  private registerListeners(
+    initial_volume: ConstructorConfig["initial_volume"] | undefined
+  ) {
+    this.addListener("VolumeChanged", (event) => {
+      this._volume = event.volume
+    })
+
+    if (initial_volume) {
+      this.addListener("SessionConnected", () => {
+        this.setVolume(initial_volume.volume, initial_volume.raw)
+      })
+    }
   }
 
   public get isInitialized() {
@@ -121,10 +139,10 @@ export class SpotifyPlayer {
     await librespotModule.seek.call(this.playerInstance, posMs)
   }
 
-  public async volume(volume: number, raw = false) {
+  public async setVolume(volume: number, raw = false) {
     let parsedVolume: number = volume
     if (!raw) {
-      parsedVolume = (Math.min(Math.max(volume, 100), 0) / 100) * 65535
+      parsedVolume = (Math.max(Math.min(volume, 100), 0) / 100) * 65535
     }
 
     librespotModule.set_volume.call(this.playerInstance, parsedVolume)
@@ -132,7 +150,6 @@ export class SpotifyPlayer {
 
   public async load(trackURIs: string | string[]) {
     const token = await this.getToken()
-
     if (!token) {
       throw Error("Failed to get a valid access token")
     }
@@ -167,24 +184,17 @@ export class SpotifyPlayer {
 
         switch (match.groups.type) {
           case "track":
-            options.body!["uris"] = (
-              (options.body!["uris"] as string[]) ?? []
-            ).push(trackURI)
+            options.body!["uris"] = (options.body!["uris"] as string[]) ?? []
+            ;(options.body!["uris"]! as string[]).push(trackURI)
             break
           default:
             options.body!["context_uri"] = trackURI
             break
         }
-
-        console.log(options)
-
-        await request<void>(
-          "https://api.spotify.com/v1/me/player/play",
-          options
-        )
-        // console.log(resp)
       }
     }
+
+    await request<void>("https://api.spotify.com/v1/me/player/play", options)
   }
 
   public on<T extends PlayerEventTypes>(

@@ -29,6 +29,7 @@ export interface ConstructorConfig {
   auth: AuthDetails
   save_tokens?: boolean
   cache_path?: PathLike
+  initial_volume?: { volume: number; raw?: boolean }
 }
 
 export interface AuthDetails {

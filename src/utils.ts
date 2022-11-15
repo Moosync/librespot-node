@@ -36,13 +36,14 @@ export function request<T>(url: string, config: FetchConfig): Promise<T> {
       })
 
       res.on("end", () => {
-        if (res.statusCode === 200) {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode <= 299) {
           try {
             resolve(JSON.parse(data))
           } catch {
-            reject(data)
+            resolve(data as T)
           }
         } else {
+          console.log(data, res.statusCode)
           reject(data)
         }
       })
@@ -50,6 +51,7 @@ export function request<T>(url: string, config: FetchConfig): Promise<T> {
 
     req.on("error", reject)
     if (config.body) {
+      console.log("body", JSON.stringify(config.body))
       req.write(JSON.stringify(config.body))
     }
     req.end()
