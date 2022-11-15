@@ -148,6 +148,14 @@ export class SpotifyPlayer {
     librespotModule.set_volume.call(this.playerInstance, parsedVolume)
   }
 
+  public getVolume(raw = false) {
+    if (raw) {
+      return this._volume
+    }
+
+    return (this._volume / 65535) * 100
+  }
+
   public async load(trackURIs: string | string[]) {
     const token = await this.getToken()
     if (!token) {
