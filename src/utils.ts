@@ -1,13 +1,7 @@
 import https, { RequestOptions } from "https"
+import { FetchConfig } from "../types"
 
-interface Config {
-  method: "GET" | "POST" | "PUT"
-  body?: Record<string, unknown>
-  headers?: Record<string, string | string[] | number>
-  search?: Record<string, string>
-}
-
-export function fetch<T>(url: string, config: Config): Promise<T> {
+export function request<T>(url: string, config: FetchConfig): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const parsedUrl = new URL(url)
 
@@ -22,12 +16,9 @@ export function fetch<T>(url: string, config: Config): Promise<T> {
       )
     }
 
-    console.log(
-      parsedUrl.pathname +
-        (config.search
-          ? `?${new URLSearchParams(config.search).toString()}`
-          : "")
-    )
+    if (config.auth) {
+      config.headers["Authorization"] = `Bearer ${config.auth}`
+    }
 
     const options: RequestOptions = {
       host: parsedUrl.hostname,
@@ -45,8 +36,15 @@ export function fetch<T>(url: string, config: Config): Promise<T> {
       })
 
       res.on("end", () => {
-        resolve(data as any)
-        // console.log(resolve(JSON.parse(data)))
+        if (res.statusCode === 200) {
+          try {
+            resolve(JSON.parse(data))
+          } catch {
+            reject(data)
+          }
+        } else {
+          reject(data)
+        }
       })
     })
 

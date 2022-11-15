@@ -12,7 +12,20 @@ export interface LibrespotModule {
   set_volume: (volume: number) => Promise<void>
   close_player: () => Promise<void>
   get_device_id: () => string
-  get_token: (scopes: string) => Promise<Token>
+  get_token: (scopes: string) => Promise<Token | undefined>
+}
+
+interface FetchConfig {
+  method: "GET" | "POST" | "PUT"
+  body?: Record<string, unknown>
+  headers?: Record<string, string | string[] | number>
+  search?: Record<string, string>
+  auth?: string
+}
+
+export interface ConstructorConfig {
+  auth: AuthDetails
+  save_tokens?: boolean
 }
 
 export interface AuthDetails {
@@ -174,5 +187,6 @@ export type Token = {
   access_token: string
   token_type: "Bearer"
   expires_in: number
+  expiry_from_epoch: number
   scopes: TokenScope[]
 }
