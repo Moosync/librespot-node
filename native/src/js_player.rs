@@ -50,11 +50,11 @@ impl JsPlayerWrapper {
         let (player_creation_tx, player_creation_rx) = mpsc::channel::<Result<String, Error>>();
         let (close_tx, close_rx) = mpsc::channel::<()>();
 
-        let mut callback_channel = cx.channel();
-        callback_channel.unref(cx);
+        let mut commands_channel = cx.channel();
+        commands_channel.unref(cx);
 
-        let mut channel = cx.channel();
-        channel.unref(cx);
+        let mut event_callback_channel = cx.channel();
+        event_callback_channel.unref(cx);
 
         thread::spawn(move || {
             let runtime = Builder::new_multi_thread()
@@ -87,7 +87,7 @@ impl JsPlayerWrapper {
                 match res {
                     Ok((spirc, spirc_task)) => {
                         JsPlayerWrapper::start_player_event_thread(
-                            channel,
+                            event_callback_channel,
                             events_channel,
                             close_rx,
                         );
@@ -96,7 +96,7 @@ impl JsPlayerWrapper {
                             spirc,
                             session.clone(),
                             close_tx,
-                            callback_channel,
+                            commands_channel,
                         );
 
                         // Panic thread if send fails
