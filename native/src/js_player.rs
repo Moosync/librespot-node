@@ -3,7 +3,9 @@ use std::{
     thread,
 };
 
-use librespot::{connect::spirc::Spirc, core::Session, playback::player::PlayerEventChannel};
+use librespot::{
+    connect::spirc::Spirc, core::Error, core::Session, playback::player::PlayerEventChannel,
+};
 use neon::{
     prelude::{Channel, Context, Handle, Object},
     result::JsResult,
@@ -39,13 +41,13 @@ impl JsPlayerWrapper {
         username: String,
         password: String,
         auth_type: String,
-    ) -> Option<Self>
+    ) -> Result<Self, Error>
     where
         C: Context<'a>,
     {
         let (tx, rx) = mpsc::channel::<Message>();
 
-        let (player_creation_tx, player_creation_rx) = mpsc::channel::<String>();
+        let (player_creation_tx, player_creation_rx) = mpsc::channel::<Result<String, Error>>();
         let (close_tx, close_rx) = mpsc::channel::<()>();
 
         let mut callback_channel = cx.channel();
@@ -73,37 +75,45 @@ impl JsPlayerWrapper {
 
                 let events_channel = player.get_player_event_channel();
 
-                let (spirc, spirc_task) = Spirc::new(
+                let res = Spirc::new(
                     connect_config.clone(),
                     session.clone(),
                     credentials.clone(),
                     player,
                     mixer,
                 )
-                .await
-                .unwrap();
+                .await;
 
-                JsPlayerWrapper::start_player_event_thread(channel, events_channel, close_rx);
-                JsPlayerWrapper::listen_commands(
-                    rx,
-                    spirc,
-                    session.clone(),
-                    close_tx,
-                    callback_channel,
-                );
+                match res {
+                    Ok((spirc, spirc_task)) => {
+                        JsPlayerWrapper::start_player_event_thread(
+                            channel,
+                            events_channel,
+                            close_rx,
+                        );
+                        JsPlayerWrapper::listen_commands(
+                            rx,
+                            spirc,
+                            session.clone(),
+                            close_tx,
+                            callback_channel,
+                        );
 
-                // Panic thread if send fails
-                player_creation_tx.send(device_id).unwrap();
+                        // Panic thread if send fails
+                        player_creation_tx.send(Ok(device_id)).unwrap();
 
-                spirc_task.await;
+                        spirc_task.await;
+                    }
+                    Err(e) => player_creation_tx.send(Err(e)).unwrap(),
+                }
             })
         });
 
-        while let Ok(device_id) = player_creation_rx.recv() {
-            return Some(Self { tx, device_id });
+        let res = player_creation_rx.recv();
+        match res.unwrap() {
+            Ok(device_id) => return Ok(Self { tx, device_id }),
+            Err(e) => Err(e),
         }
-
-        return None;
     }
 
     pub fn start_player_event_thread(

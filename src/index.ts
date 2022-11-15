@@ -96,7 +96,7 @@ class PositionHolder {
 }
 
 function safe_execution(
-  target: Object,
+  _: unknown,
   propertyKey: string,
   descriptor: TypedPropertyDescriptor<any>
 ) {
@@ -106,7 +106,9 @@ function safe_execution(
     if ((this as SpotifyPlayer).isInitialized) {
       originalMethod.call(this, ...args)
     } else {
-      throw new Error("Cannot call method before player has initialized")
+      throw new Error(
+        `Cannot call method ${propertyKey} before player has initialized`
+      )
     }
   }
 

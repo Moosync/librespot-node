@@ -63,8 +63,8 @@ fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
     deferred.settle_with(&channel, move |mut cx| {
         let js_player = JsPlayerWrapper::new(&mut cx, username, password, auth_type);
         match js_player {
-            Some(_) => Ok(cx.boxed(js_player.unwrap())),
-            None => cx.throw_error("Failed to create player"),
+            Ok(_) => Ok(cx.boxed(js_player.unwrap())),
+            Err(e) => cx.throw_error(format!("Failed to create player: {}", e.to_string())),
         }
     });
 
