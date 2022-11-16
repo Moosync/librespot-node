@@ -104,7 +104,7 @@ function safe_execution(
 
   descriptor.value = function (...args: unknown[]) {
     if ((this as SpotifyPlayer).isInitialized) {
-      originalMethod.call(this, ...args)
+      return originalMethod.call(this, ...args)
     } else {
       throw new Error(
         `Cannot call method ${propertyKey} before player has initialized`
@@ -284,13 +284,6 @@ export class SpotifyPlayer {
     }
 
     await request<void>("https://api.spotify.com/v1/me/player/play", options)
-  }
-
-  public on<T extends PlayerEventTypes>(
-    event: T,
-    callback: (event: PlayerEvent<T>) => void
-  ) {
-    this.eventEmitter.on(event, callback)
   }
 
   public addListener<T extends PlayerEventTypes>(
