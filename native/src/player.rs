@@ -19,10 +19,11 @@ pub fn new_player(
 ) -> (Player, Box<dyn Mixer>) {
     let backend: SinkBuilder;
     if backend_str.is_empty() {
-        backend = audio_backend::find(None).unwrap();
+        backend = audio_backend::find(Some("rodio".to_string())).unwrap();
     } else {
         backend = audio_backend::find(Some(backend_str)).unwrap();
     }
+
     let mixer = mixer::find(None).unwrap()(MixerConfig::default());
 
     let p = Player::new(
@@ -56,6 +57,7 @@ fn get_auth_type(auth_type: &str) -> AuthenticationType {
 }
 
 pub fn create_credentials(username: String, password: String, auth_type: String) -> Credentials {
+    println!("{}", auth_type);
     Credentials {
         username: username.into(),
         auth_type: get_auth_type(auth_type.as_str()),

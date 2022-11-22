@@ -1,8 +1,9 @@
 // TODO: Use unwrap_or_... instead of unwraps
 
+use config::PlayerConstructorConfig;
 use constants::GLOBAL_JS_CALLBACK_METHOD;
 use futures::executor::block_on;
-use js_player_spirc::{JsPlayerSpircWrapper, SpircConstructorConfig};
+use js_player_spirc::JsPlayerSpircWrapper;
 use librespot::{connect::spirc::Spirc, core::Session};
 use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
@@ -14,7 +15,9 @@ use neon::{
 };
 use utils::token_to_obj;
 
+mod config;
 mod constants;
+// mod js_player;
 mod js_player_spirc;
 mod player;
 mod utils;
@@ -47,10 +50,10 @@ fn send_to_player(
     return promise;
 }
 
-fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
+fn create_player_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let config = cx.argument::<JsObject>(0)?;
 
-    let constructor_config = SpircConstructorConfig {
+    let constructor_config = PlayerConstructorConfig {
         username: config
             .get::<JsString, _, _>(&mut cx, "username")?
             .value(&mut cx),
@@ -189,7 +192,7 @@ fn get_token(mut cx: FunctionContext) -> JsResult<JsPromise> {
 pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     env_logger::init();
 
-    cx.export_function("create_player", create_player)?;
+    cx.export_function("create_player_spirc", create_player_spirc)?;
     cx.export_function("play", play)?;
     cx.export_function("pause", pause)?;
     cx.export_function("seek", seek)?;

@@ -31,8 +31,6 @@ const DEFAULT_SCOPES: TokenScope[] = [
   "user-modify-playback-state",
 ]
 
-const POSITION_UPDATE_INTERVAL = 500
-
 function safe_execution(
   _: unknown,
   propertyKey: string,
@@ -67,6 +65,7 @@ export class SpotifyPlayerSpirc {
   private _volume = 0
 
   constructor(config: ConstructorConfig) {
+    console.log(librespotModule)
     librespotModule
       .create_player_spirc(
         {
@@ -316,3 +315,21 @@ export class SpotifyPlayerSpirc {
     return res
   }
 }
+
+const sp = new SpotifyPlayerSpirc({
+  auth: {
+    username: "ovenoboyo@gmail.com",
+    password: "kekboi69",
+  },
+})
+
+sp.addListener("PlayerInitialized", async () => {
+  console.log("initialized")
+  await sp.load("spotify:track:4SF6S1UUsTes8qQfpnnOWB")
+  await sp.play()
+  await sp.setVolume(100)
+})
+
+setInterval(() => {
+  console.log("spirc", (global as any)._watch_player_events_global)
+}, 2000)

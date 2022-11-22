@@ -32,7 +32,7 @@ export interface LibrespotModule {
   ) => Promise<PlayerNativeObject>
 
   play: () => Promise<void>
-  pause: () => Promise<void>
+  pause_: () => Promise<void>
   seek: (timeMs: number) => Promise<void>
   set_volume: (volume: number) => Promise<void>
   close_player: () => Promise<void>

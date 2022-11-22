@@ -1,4 +1,4 @@
-export * from "./player"
+export * from "./spirc"
 export {
   LibrespotModule,
   ConstructorConfig,
