@@ -8,20 +8,11 @@ import {
   TokenScope,
 } from "./types"
 import path from "path"
-import { request, GenericPlayer, safe_execution } from "./utils"
+import { request, GenericPlayer, safe_execution, DEFAULT_SCOPES } from "./utils"
 import { TokenHandler } from "./tokenHandler"
 import { PositionHolder } from "./positionHolder"
 
 const librespotModule: LibrespotModule = bindings("librespot.node")
-
-const DEFAULT_SCOPES: TokenScope[] = [
-  "playlist-read-collaborative",
-  "user-follow-read",
-  "user-library-read",
-  "user-top-read",
-  "user-read-recently-played",
-  "user-modify-playback-state",
-]
 
 export class SpotifyPlayerSpirc extends GenericPlayer {
   private playerInstance: PlayerNativeObject | undefined

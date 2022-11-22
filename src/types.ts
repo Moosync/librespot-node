@@ -24,6 +24,7 @@ export interface LibrespotModule {
   set_volume: (volume: number) => Promise<void>
   close_player: () => Promise<void>
   get_device_id: () => string
+  get_token: (scopes: string) => Promise<Token | undefined>
   load_track: (
     trackUri: string,
     autoPlay: boolean,

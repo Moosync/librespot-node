@@ -343,6 +343,25 @@ fn get_device_id(mut cx: FunctionContext) -> JsResult<JsValue> {
     return Ok(cx.undefined().as_value(&mut cx));
 }
 
+fn get_token(mut cx: FunctionContext) -> JsResult<JsPromise> {
+    let scopes = cx.argument::<JsString>(0)?.value(&mut cx);
+    let promise = send_to_player(cx, move |_, _, session, channel, deferred| {
+        deferred.settle_with(channel, move |mut cx| -> Result<Handle<JsValue>, _> {
+            let res = block_on(session.token_provider().get_token(scopes.as_str()));
+
+            match res {
+                Ok(t) => {
+                    let (obj, mut cx) = token_to_obj(cx, t);
+                    Ok(obj.as_value(&mut cx))
+                }
+                Err(_) => Ok(cx.undefined().as_value(&mut cx)),
+            }
+        });
+    });
+
+    Ok(promise)
+}
+
 #[neon::main]
 pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     env_logger::init();
@@ -363,6 +382,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("set_volume", set_volume)?;
     cx.export_function("close_player", close_player)?;
     cx.export_function("get_device_id", get_device_id)?;
+    cx.export_function("get_token", get_token)?;
     cx.export_function("load_track", load_track)?;
 
     Ok(())

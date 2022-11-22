@@ -1,41 +1,26 @@
 import bindings from "bindings"
 import EventEmitter from "events"
-import {
-  Token,
-  ConstructorConfig,
-  FetchConfig,
-  PlayerNativeObject,
-} from "./types"
+import { ConstructorConfig, PlayerNativeObject } from "./types"
 import {
   LibrespotModule,
   PlayerEvent,
   PlayerEventTypes,
   TokenScope,
 } from "./types"
-import path from "path"
-import { readFile, writeFile } from "fs/promises"
-import { GenericPlayer, request, safe_execution } from "./utils"
-import assert from "assert"
-import { PathLike } from "fs"
-import { TokenHandler } from "./tokenHandler"
+import { DEFAULT_SCOPES, GenericPlayer, safe_execution } from "./utils"
 import { PositionHolder } from "./positionHolder"
+import { TokenHandler } from "./tokenHandler"
+import path from "path"
 
 const librespotModule: LibrespotModule = bindings("librespot.node")
 
-const DEFAULT_SCOPES: TokenScope[] = [
-  "playlist-read-collaborative",
-  "user-follow-read",
-  "user-library-read",
-  "user-top-read",
-  "user-read-recently-played",
-  "user-modify-playback-state",
-]
 export class SpotifyPlayer extends GenericPlayer {
   private playerInstance: PlayerNativeObject | undefined
 
   private device_id!: string
   private eventEmitter = new EventEmitter()
   private _isInitialized = false
+  private tokenHandler: TokenHandler
   private _positionHolder: PositionHolder
 
   private saveToken: boolean
@@ -72,6 +57,9 @@ export class SpotifyPlayer extends GenericPlayer {
         })
       })
 
+    this.tokenHandler = new TokenHandler(
+      config.cache_path ?? path.join(__dirname, "token_dump")
+    )
     this._positionHolder = new PositionHolder(config.pos_update_interval)
     this._positionHolder.callback = (position_ms) => {
       this.eventEmitter.emit("TimeUpdated", {
@@ -246,4 +234,42 @@ export class SpotifyPlayer extends GenericPlayer {
   public getDeviceId() {
     return this.device_id
   }
+
+  @safe_execution
+  public async getToken(...scopes: TokenScope[]) {
+    scopes = scopes && scopes.length > 0 ? scopes : DEFAULT_SCOPES
+
+    const cachedToken = await this.tokenHandler.getToken(scopes)
+    if (cachedToken) {
+      return cachedToken
+    }
+
+    const res = await librespotModule.get_token.call(
+      this.playerInstance,
+      scopes.join(",")
+    )
+
+    if (res) {
+      res.scopes = (res.scopes as unknown as string).split(",") as TokenScope[]
+      res.expiry_from_epoch = Date.now() + res.expires_in
+
+      if (this.saveToken) {
+        await this.tokenHandler.addToken(res)
+      }
+    }
+
+    return res
+  }
 }
+
+const sp = new SpotifyPlayer({
+  auth: {
+    username: "ovenoboyo@gmail.com",
+    password: "kekboi69",
+  },
+})
+
+sp.on("PlayerInitialized", async () => {
+  const token = await sp.getToken()
+  console.log(token)
+})

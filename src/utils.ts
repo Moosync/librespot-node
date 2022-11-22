@@ -1,5 +1,5 @@
 import https, { RequestOptions } from "https"
-import { FetchConfig } from "./types"
+import { FetchConfig, TokenScope } from "./types"
 
 export function request<T>(url: string, config: FetchConfig): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -58,6 +58,14 @@ export function request<T>(url: string, config: FetchConfig): Promise<T> {
   })
 }
 
+export const DEFAULT_SCOPES: TokenScope[] = [
+  "playlist-read-collaborative",
+  "user-follow-read",
+  "user-library-read",
+  "user-top-read",
+  "user-read-recently-played",
+  "user-modify-playback-state",
+]
 export class GenericPlayer {
   get isInitialized() {
     return false
