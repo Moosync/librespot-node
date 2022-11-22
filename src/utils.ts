@@ -1,5 +1,5 @@
 import https, { RequestOptions } from "https"
-import { FetchConfig } from "../types"
+import { FetchConfig } from "./types"
 
 export function request<T>(url: string, config: FetchConfig): Promise<T> {
   return new Promise<T>((resolve, reject) => {

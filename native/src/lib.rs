@@ -17,6 +17,7 @@ mod constants;
 mod js_player;
 mod player;
 mod utils;
+use env_logger;
 
 fn send_to_player(
     mut cx: FunctionContext,
@@ -165,6 +166,8 @@ fn get_token(mut cx: FunctionContext) -> JsResult<JsPromise> {
 
 #[neon::main]
 pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
+    env_logger::init();
+
     cx.export_function("create_player", create_player)?;
     cx.export_function("play", play)?;
     cx.export_function("pause", pause)?;

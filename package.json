@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "cargo-cp-artifact -a cdylib librespot-node build/librespot.node -- cargo build --manifest-path=native/Cargo.toml --message-format=json-render-diagnostics",
     "build-debug": "yarn run build",

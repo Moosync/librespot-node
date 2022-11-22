@@ -1,12 +1,17 @@
 import bindings from "bindings"
 import EventEmitter from "events"
-import { Token, ConstructorConfig, FetchConfig } from "../types/index"
+import {
+  Token,
+  ConstructorConfig,
+  FetchConfig,
+  PlayerNativeObject,
+} from "./types"
 import {
   LibrespotModule,
   PlayerEvent,
   PlayerEventTypes,
   TokenScope,
-} from "../types"
+} from "./types"
 import path from "path"
 import { readFile, writeFile } from "fs/promises"
 import { request } from "./utils"
@@ -14,8 +19,6 @@ import assert from "assert"
 import { PathLike } from "fs"
 
 const librespotModule: LibrespotModule = bindings("librespot.node")
-
-type PlayerNativeObject = never
 
 const DEFAULT_SCOPES: TokenScope[] = [
   "playlist-read-collaborative",
@@ -47,7 +50,7 @@ class TokenHandler {
       )
       assert(Array.isArray(this.tokenMap))
     } catch (e) {
-      console.error("Failed to parse token store", e)
+      console.warn("Failed to parse token store, creating new")
       this.tokenMap = []
     }
   }
@@ -75,6 +78,7 @@ class PositionHolder {
   public position = 0
   private positionListener: ReturnType<typeof setInterval> | undefined
   private updateInterval: number
+  public callback?: (time: number) => void
 
   constructor(updateInterval?: number) {
     this.updateInterval = updateInterval || POSITION_UPDATE_INTERVAL
@@ -85,12 +89,14 @@ class PositionHolder {
 
     this.positionListener = setInterval(() => {
       this.position += this.updateInterval
+      this.callback && this.callback(this.position)
     }, this.updateInterval)
   }
 
   public clearListener() {
     if (this.positionListener) {
       clearInterval(this.positionListener)
+      this.positionListener = undefined
     }
   }
 }
@@ -156,6 +162,12 @@ export class SpotifyPlayer {
       config.cache_path ?? path.join(__dirname, "token_dump")
     )
     this._positionHolder = new PositionHolder(config.pos_update_interval)
+    this._positionHolder.callback = (position_ms) => {
+      this.eventEmitter.emit("TimeUpdated", {
+        event: "TimeUpdated",
+        position_ms,
+      })
+    }
     this.saveToken = config.save_tokens ?? false
   }
 
@@ -182,11 +194,21 @@ export class SpotifyPlayer {
       this._positionHolder.position = e.position_ms
     })
 
+    this.addListener("Stopped", (e) => {
+      this._positionHolder.clearListener()
+      this._positionHolder.position = 0
+    })
+
     this.addListener("PositionCorrection", (e) => {
       this._positionHolder.position = e.position_ms
     })
 
+    this.addListener("Seeked", (e) => {
+      this._positionHolder.position = e.position_ms
+    })
+
     this.addListener("TrackChanged", () => {
+      this._positionHolder.clearListener()
       this._positionHolder.position = 0
     })
   }
@@ -195,7 +217,8 @@ export class SpotifyPlayer {
     return this._isInitialized
   }
 
-  private player_event_callback(event: PlayerEvent<string>) {
+  private player_event_callback(event: PlayerEvent) {
+    console.log(event)
     this.eventEmitter.emit(event.event, event)
   }
 
@@ -212,6 +235,13 @@ export class SpotifyPlayer {
   @safe_execution
   public async seek(posMs: number) {
     await librespotModule.seek.call(this.playerInstance, posMs)
+  }
+
+  @safe_execution
+  public async close() {
+    this._positionHolder.clearListener()
+    this.eventEmitter.removeAllListeners()
+    await librespotModule.close_player.call(this.playerInstance)
   }
 
   public getCurrentPosition() {
@@ -237,18 +267,22 @@ export class SpotifyPlayer {
   }
 
   @safe_execution
-  public async load(trackURIs: string | string[]) {
-    const token = await this.getToken()
+  public async load(trackURIs: string | string[], token?: string) {
     if (!token) {
-      throw Error("Failed to get a valid access token")
+      token = (await this.getToken())?.access_token
+      if (!token) {
+        throw Error("Failed to get a valid access token")
+      }
     }
+
+    console.log("using existing token", token)
 
     const options: FetchConfig = {
       method: "PUT",
       search: {
         device_id: this.device_id,
       },
-      auth: token.access_token,
+      auth: token,
       body: {},
     }
 
@@ -345,3 +379,12 @@ export class SpotifyPlayer {
     return res
   }
 }
+
+const sp = new SpotifyPlayer({
+  auth: {
+    username: "ovenoboyo@gmail.com",
+    password: "kekboi69",
+  },
+})
+
+setInterval(() => {})

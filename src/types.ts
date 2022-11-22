@@ -1,23 +1,25 @@
 import { PathLike } from "fs"
 
+export type PlayerNativeObject = never
+
 export interface LibrespotModule {
   create_player: (
     username: string,
     password: string,
-    authType?: string,
+    authType: string | undefined,
     callback: (event: PlayerEvent) => void
   ) => Promise<PlayerNativeObject>
 
   play: () => Promise<void>
   pause: () => Promise<void>
-  seek: (timeMs) => Promise<void>
+  seek: (timeMs: number) => Promise<void>
   set_volume: (volume: number) => Promise<void>
   close_player: () => Promise<void>
   get_device_id: () => string
   get_token: (scopes: string) => Promise<Token | undefined>
 }
 
-interface FetchConfig {
+export interface FetchConfig {
   method: "GET" | "POST" | "PUT"
   body?: Record<string, unknown>
   headers?: Record<string, string | string[] | number>
@@ -68,7 +70,7 @@ export type PlayerEventTypes =
   | "TimeUpdated"
   | "InitializationError"
 
-export type PlayerEvent<T extends PlayerEventTypes | string> = {
+export type PlayerEvent<T extends PlayerEventTypes = "InitializationError"> = {
   event: T
 } & (T extends "Stopped"
   ? {
@@ -165,10 +167,14 @@ export type PlayerEvent<T extends PlayerEventTypes | string> = {
   ? {
       filter: boolean
     }
+  : T extends "TimeUpdated"
+  ? {
+      position_ms: number
+    }
   : T extends "PlayerInitialized"
   ? undefined
   : T extends "InitializationError"
-  ? { error: unknown }
+  ? { error: Error }
   : unknown)
 
 export type TokenScope =

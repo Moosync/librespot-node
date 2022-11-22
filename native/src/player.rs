@@ -12,7 +12,7 @@ use librespot::protocol::authentication::AuthenticationType;
 use tokio;
 
 pub fn new_player(session: Session, player_config: PlayerConfig) -> (Player, Box<dyn Mixer>) {
-    let backend = audio_backend::find(None).unwrap();
+    let backend = audio_backend::find(Some("rodio".to_string())).unwrap();
     let mixer = mixer::find(None).unwrap()(MixerConfig::default());
 
     let p = Player::new(
@@ -26,7 +26,10 @@ pub fn new_player(session: Session, player_config: PlayerConfig) -> (Player, Box
 }
 
 pub fn create_player_config() -> PlayerConfig {
-    return PlayerConfig::default();
+    let mut config = PlayerConfig::default();
+    config.normalisation = true;
+    config.passthrough = true;
+    config
 }
 
 fn get_auth_type(auth_type: &str) -> AuthenticationType {
@@ -52,7 +55,6 @@ pub fn create_credentials(username: String, password: String, auth_type: String)
 
 pub fn create_session() -> Session {
     let session_config = SessionConfig::default();
-
     let session = Session::new(session_config, None);
 
     return session;
