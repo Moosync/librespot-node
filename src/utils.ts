@@ -57,3 +57,29 @@ export function request<T>(url: string, config: FetchConfig): Promise<T> {
     req.end()
   })
 }
+
+export class GenericPlayer {
+  get isInitialized() {
+    return false
+  }
+}
+
+export function safe_execution(
+  _: unknown,
+  propertyKey: string,
+  descriptor: TypedPropertyDescriptor<any>
+) {
+  const originalMethod = descriptor.value
+
+  descriptor.value = function (...args: unknown[]) {
+    if ((this as GenericPlayer).isInitialized) {
+      return originalMethod.call(this, ...args)
+    } else {
+      throw new Error(
+        `Cannot call method ${propertyKey} before player has initialized`
+      )
+    }
+  }
+
+  return descriptor
+}

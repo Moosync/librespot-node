@@ -12,19 +12,6 @@ export interface PlayerConfig {
 }
 
 export interface LibrespotModule {
-  create_player_spirc: (
-    config: PlayerConfig,
-    callback: (event: PlayerEvent) => void
-  ) => Promise<PlayerNativeObject>
-
-  play_spirc: () => Promise<void>
-  pause_spirc: () => Promise<void>
-  seek_spirc: (timeMs: number) => Promise<void>
-  set_volume_spirc: (volume: number) => Promise<void>
-  close_player_spirc: () => Promise<void>
-  get_device_id_spirc: () => string
-  get_token_spirc: (scopes: string) => Promise<Token | undefined>
-
   // Non spirc player
   create_player: (
     config: PlayerConfig,
@@ -37,7 +24,25 @@ export interface LibrespotModule {
   set_volume: (volume: number) => Promise<void>
   close_player: () => Promise<void>
   get_device_id: () => string
-  get_token: (scopes: string) => Promise<Token | undefined>
+  load_track: (
+    trackUri: string,
+    autoPlay: boolean,
+    start_pos: number
+  ) => Promise<void>
+
+  // Spirc player
+  create_player_spirc: (
+    config: PlayerConfig,
+    callback: (event: PlayerEvent) => void
+  ) => Promise<PlayerNativeObject>
+
+  play_spirc: () => Promise<void>
+  pause_spirc: () => Promise<void>
+  seek_spirc: (timeMs: number) => Promise<void>
+  set_volume_spirc: (volume: number) => Promise<void>
+  close_player_spirc: () => Promise<void>
+  get_device_id_spirc: () => string
+  get_token_spirc: (scopes: string) => Promise<Token | undefined>
 }
 
 export interface FetchConfig {

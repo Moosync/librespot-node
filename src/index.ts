@@ -1,3 +1,4 @@
+export * from "./spirc"
 export * from "./player"
 export {
   LibrespotModule,

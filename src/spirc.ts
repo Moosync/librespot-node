@@ -1,11 +1,6 @@
 import bindings from "bindings"
 import EventEmitter from "events"
-import {
-  Token,
-  ConstructorConfig,
-  FetchConfig,
-  PlayerNativeObject,
-} from "./types"
+import { ConstructorConfig, FetchConfig, PlayerNativeObject } from "./types"
 import {
   LibrespotModule,
   PlayerEvent,
@@ -13,10 +8,7 @@ import {
   TokenScope,
 } from "./types"
 import path from "path"
-import { readFile, writeFile } from "fs/promises"
-import { GenericPlayer, request, safe_execution } from "./utils"
-import assert from "assert"
-import { PathLike } from "fs"
+import { request, GenericPlayer, safe_execution } from "./utils"
 import { TokenHandler } from "./tokenHandler"
 import { PositionHolder } from "./positionHolder"
 
@@ -30,12 +22,14 @@ const DEFAULT_SCOPES: TokenScope[] = [
   "user-read-recently-played",
   "user-modify-playback-state",
 ]
-export class SpotifyPlayer extends GenericPlayer {
+
+export class SpotifyPlayerSpirc extends GenericPlayer {
   private playerInstance: PlayerNativeObject | undefined
 
   private device_id!: string
   private eventEmitter = new EventEmitter()
   private _isInitialized = false
+  private tokenHandler: TokenHandler
   private _positionHolder: PositionHolder
 
   private saveToken: boolean
@@ -45,10 +39,9 @@ export class SpotifyPlayer extends GenericPlayer {
   constructor(config: ConstructorConfig) {
     super()
     librespotModule
-      .create_player(
+      .create_player_spirc(
         {
-          username: config.auth.username,
-          password: config.auth.password,
+          ...config.auth,
           auth_type: config.auth.authType ?? "",
           backend: "",
           normalization: false,
@@ -58,7 +51,7 @@ export class SpotifyPlayer extends GenericPlayer {
       )
       .then((val) => {
         this.playerInstance = val
-        this.device_id = librespotModule.get_device_id.call(val)
+        this.device_id = librespotModule.get_device_id_spirc.call(val)
         this.registerListeners(config.initial_volume)
         this._isInitialized = true
         this.eventEmitter.emit("PlayerInitialized", {
@@ -72,6 +65,9 @@ export class SpotifyPlayer extends GenericPlayer {
         })
       })
 
+    this.tokenHandler = new TokenHandler(
+      config.cache_path ?? path.join(__dirname, "token_dump")
+    )
     this._positionHolder = new PositionHolder(config.pos_update_interval)
     this._positionHolder.callback = (position_ms) => {
       this.eventEmitter.emit("TimeUpdated", {
@@ -135,24 +131,24 @@ export class SpotifyPlayer extends GenericPlayer {
 
   @safe_execution
   public async play() {
-    await librespotModule.play.call(this.playerInstance)
+    await librespotModule.play_spirc.call(this.playerInstance)
   }
 
   @safe_execution
   public async pause() {
-    await librespotModule.pause.call(this.playerInstance)
+    await librespotModule.pause_spirc.call(this.playerInstance)
   }
 
   @safe_execution
   public async seek(posMs: number) {
-    await librespotModule.seek.call(this.playerInstance, posMs)
+    await librespotModule.seek_spirc.call(this.playerInstance, posMs)
   }
 
   @safe_execution
   public async close() {
     this._positionHolder.clearListener()
     this.eventEmitter.removeAllListeners()
-    await librespotModule.close_player.call(this.playerInstance)
+    await librespotModule.close_player_spirc.call(this.playerInstance)
   }
 
   public getCurrentPosition() {
@@ -166,7 +162,7 @@ export class SpotifyPlayer extends GenericPlayer {
       parsedVolume = (Math.max(Math.min(volume, 100), 0) / 100) * 65535
     }
 
-    librespotModule.set_volume.call(this.playerInstance, parsedVolume)
+    librespotModule.set_volume_spirc.call(this.playerInstance, parsedVolume)
   }
 
   public getVolume(raw = false) {
@@ -178,11 +174,25 @@ export class SpotifyPlayer extends GenericPlayer {
   }
 
   @safe_execution
-  public async load(
-    trackURIs: string | string[],
-    autoPlay = false,
-    startPosition = 0
-  ) {
+  public async load(trackURIs: string | string[], token?: string) {
+    if (!token) {
+      token = (await this.getToken())?.access_token
+      if (!token) {
+        throw Error("Failed to get a valid access token")
+      }
+    }
+
+    console.log("using existing token", token)
+
+    const options: FetchConfig = {
+      method: "PUT",
+      search: {
+        device_id: this.device_id,
+      },
+      auth: token,
+      body: {},
+    }
+
     const regex = new RegExp(
       /^(?<urlType>(?:spotify:|(?:https?:\/\/(?:open|play)\.spotify\.com\/)))(?:embed)?\/?(?<type>album|track|playlist|artist)(?::|\/)((?:[0-9a-zA-Z]){22})/
     )
@@ -201,17 +211,20 @@ export class SpotifyPlayer extends GenericPlayer {
             .split("/")
             .at(-1)}`
         }
+
+        switch (match.groups.type) {
+          case "track":
+            options.body!["uris"] = (options.body!["uris"] as string[]) ?? []
+            ;(options.body!["uris"]! as string[]).push(trackURI)
+            break
+          default:
+            options.body!["context_uri"] = trackURI
+            break
+        }
       }
     }
 
-    for (const t of trackURIs) {
-      await librespotModule.load_track.call(
-        this.playerInstance,
-        t,
-        autoPlay,
-        startPosition
-      )
-    }
+    await request<void>("https://api.spotify.com/v1/me/player/play", options)
   }
 
   public on = this.addListener
@@ -245,5 +258,31 @@ export class SpotifyPlayer extends GenericPlayer {
 
   public getDeviceId() {
     return this.device_id
+  }
+
+  @safe_execution
+  public async getToken(...scopes: TokenScope[]) {
+    scopes = scopes && scopes.length > 0 ? scopes : DEFAULT_SCOPES
+
+    const cachedToken = await this.tokenHandler.getToken(scopes)
+    if (cachedToken) {
+      return cachedToken
+    }
+
+    const res = await librespotModule.get_token_spirc.call(
+      this.playerInstance,
+      scopes.join(",")
+    )
+
+    if (res) {
+      res.scopes = (res.scopes as unknown as string).split(",") as TokenScope[]
+      res.expiry_from_epoch = Date.now() + res.expires_in
+
+      if (this.saveToken) {
+        await this.tokenHandler.addToken(res)
+      }
+    }
+
+    return res
   }
 }

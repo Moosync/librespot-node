@@ -3,8 +3,14 @@ use std::{
     thread,
 };
 
+use futures::FutureExt;
 use librespot::{
-    connect::spirc::Spirc, core::Error, core::Session, playback::player::PlayerEventChannel,
+    core::Error,
+    core::{Session, SpotifyId},
+    playback::{
+        mixer::Mixer,
+        player::{Player, PlayerEventChannel},
+    },
 };
 use neon::{
     prelude::{Channel, Context, Handle, Object},
@@ -22,21 +28,22 @@ use crate::{
     utils::create_js_obj_from_event,
 };
 
-impl Finalize for JsPlayerSpircWrapper {}
+impl Finalize for JsPlayerWrapper {}
 
-pub struct JsPlayerSpircWrapper {
+pub struct JsPlayerWrapper {
     tx: mpsc::Sender<Message>,
     device_id: String,
 }
 
-pub type Callback = Box<dyn (FnOnce(&mut Spirc, Session, &Channel, Deferred)) + Send>;
+pub type Callback =
+    Box<dyn (FnOnce(&mut Player, &mut Box<dyn Mixer>, Session, &Channel, Deferred)) + Send>;
 
 pub enum Message {
     Callback(Deferred, Callback),
     Close,
 }
 
-impl JsPlayerSpircWrapper {
+impl JsPlayerWrapper {
     pub fn new<'a, C>(cx: &mut C, config: PlayerConstructorConfig) -> Result<Self, Error>
     where
         C: Context<'a>,
@@ -64,9 +71,15 @@ impl JsPlayerSpircWrapper {
                     create_credentials(config.username, config.password, config.auth_type);
 
                 let session = create_session().clone();
+                let conn_res = session.connect(credentials, false).await;
+                if conn_res.is_err() {
+                    player_creation_tx
+                        .send(Err(conn_res.err().unwrap()))
+                        .unwrap();
+                    return;
+                }
                 let player_config =
                     create_player_config(config.normalization, config.normalization_pregain);
-                let connect_config = create_connect_config();
 
                 let device_id = session.device_id().to_string();
 
@@ -75,37 +88,25 @@ impl JsPlayerSpircWrapper {
 
                 let events_channel = player.get_player_event_channel();
 
-                let res = Spirc::new(
-                    connect_config.clone(),
-                    session.clone(),
-                    credentials.clone(),
+                JsPlayerWrapper::start_player_event_thread(
+                    event_callback_channel,
+                    events_channel,
+                    close_rx,
+                );
+
+                JsPlayerWrapper::listen_commands(
+                    rx,
                     player,
                     mixer,
-                )
-                .await;
+                    session.clone(),
+                    close_tx,
+                    commands_channel,
+                );
 
-                match res {
-                    Ok((spirc, spirc_task)) => {
-                        JsPlayerSpircWrapper::start_player_event_thread(
-                            event_callback_channel,
-                            events_channel,
-                            close_rx,
-                        );
-                        JsPlayerSpircWrapper::listen_commands(
-                            rx,
-                            spirc,
-                            session.clone(),
-                            close_tx,
-                            commands_channel,
-                        );
+                // Panic thread if send fails
+                player_creation_tx.send(Ok(device_id)).unwrap();
 
-                        // Panic thread if send fails
-                        player_creation_tx.send(Ok(device_id)).unwrap();
-
-                        spirc_task.await;
-                    }
-                    Err(e) => player_creation_tx.send(Err(e)).unwrap(),
-                }
+                loop {}
             })
         });
 
@@ -144,7 +145,8 @@ impl JsPlayerSpircWrapper {
 
     pub fn listen_commands(
         rx: Receiver<Message>,
-        mut spirc: Spirc,
+        mut player: Player,
+        mut mixer: Box<dyn Mixer>,
         session: Session,
         close_tx: mpsc::Sender<()>,
         callback_channel: Channel,
@@ -153,12 +155,18 @@ impl JsPlayerSpircWrapper {
             while let Ok(message) = rx.recv() {
                 match message {
                     Message::Callback(deferred, f) => {
-                        f(&mut spirc, session.clone(), &callback_channel, deferred);
+                        f(
+                            &mut player,
+                            &mut mixer,
+                            session.clone(),
+                            &callback_channel,
+                            deferred,
+                        );
                     }
 
                     Message::Close => {
                         close_tx.send(()).unwrap();
-                        spirc.shutdown().unwrap();
+                        player.stop();
                         break;
                     }
                 }
@@ -173,7 +181,9 @@ impl JsPlayerSpircWrapper {
     pub fn send(
         &self,
         deferred: Deferred,
-        callback: impl (FnOnce(&mut Spirc, Session, &Channel, Deferred)) + Send + 'static,
+        callback: impl (FnOnce(&mut Player, &mut Box<dyn Mixer>, Session, &Channel, Deferred))
+            + Send
+            + 'static,
     ) {
         let res = self
             .tx
