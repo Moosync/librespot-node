@@ -137,9 +137,13 @@ export class SpotifyPlayer {
   constructor(config: ConstructorConfig) {
     librespotModule
       .create_player(
-        config.auth.username,
-        config.auth.password,
-        config.auth.authType ?? "",
+        {
+          ...config.auth,
+          auth_type: config.auth.authType ?? "",
+          backend: "",
+          normalization: false,
+          normalization_pregain: 0,
+        },
         this.player_event_callback.bind(this)
       )
       .then((val) => {
@@ -379,12 +383,3 @@ export class SpotifyPlayer {
     return res
   }
 }
-
-const sp = new SpotifyPlayer({
-  auth: {
-    username: "ovenoboyo@gmail.com",
-    password: "kekboi69",
-  },
-})
-
-setInterval(() => {})

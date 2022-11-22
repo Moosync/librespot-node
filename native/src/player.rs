@@ -4,6 +4,7 @@ use librespot::connect::config::ConnectConfig;
 use librespot;
 use librespot::core::{authentication::Credentials, config::SessionConfig, session::Session};
 use librespot::discovery::DeviceType;
+use librespot::playback::audio_backend::SinkBuilder;
 use librespot::playback::config::PlayerConfig;
 use librespot::playback::mixer::{Mixer, MixerConfig};
 use librespot::playback::player::Player;
@@ -11,8 +12,17 @@ use librespot::playback::{audio_backend, mixer};
 use librespot::protocol::authentication::AuthenticationType;
 use tokio;
 
-pub fn new_player(session: Session, player_config: PlayerConfig) -> (Player, Box<dyn Mixer>) {
-    let backend = audio_backend::find(Some("rodio".to_string())).unwrap();
+pub fn new_player(
+    backend_str: String,
+    session: Session,
+    player_config: PlayerConfig,
+) -> (Player, Box<dyn Mixer>) {
+    let backend: SinkBuilder;
+    if backend_str.is_empty() {
+        backend = audio_backend::find(None).unwrap();
+    } else {
+        backend = audio_backend::find(Some(backend_str)).unwrap();
+    }
     let mixer = mixer::find(None).unwrap()(MixerConfig::default());
 
     let p = Player::new(
@@ -25,10 +35,10 @@ pub fn new_player(session: Session, player_config: PlayerConfig) -> (Player, Box
     return (p, mixer);
 }
 
-pub fn create_player_config() -> PlayerConfig {
+pub fn create_player_config(normalization: bool, normalization_pregain: f64) -> PlayerConfig {
     let mut config = PlayerConfig::default();
-    config.normalisation = true;
-    config.passthrough = true;
+    config.normalisation = normalization;
+    config.normalisation_pregain_db = normalization_pregain;
     config
 }
 

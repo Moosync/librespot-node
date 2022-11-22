@@ -2,11 +2,32 @@ import { PathLike } from "fs"
 
 export type PlayerNativeObject = never
 
+export interface PlayerConfig {
+  username: string
+  password: string
+  auth_type: string
+  backend: string
+  normalization: boolean
+  normalization_pregain: number
+}
+
 export interface LibrespotModule {
+  create_player_spirc: (
+    config: PlayerConfig,
+    callback: (event: PlayerEvent) => void
+  ) => Promise<PlayerNativeObject>
+
+  play_spirc: () => Promise<void>
+  pause_spirc: () => Promise<void>
+  seek_spirc: (timeMs: number) => Promise<void>
+  set_volume_spirc: (volume: number) => Promise<void>
+  close_player_spirc: () => Promise<void>
+  get_device_id_spirc: () => string
+  get_token_spirc: (scopes: string) => Promise<Token | undefined>
+
+  // Non spirc player
   create_player: (
-    username: string,
-    password: string,
-    authType: string | undefined,
+    config: PlayerConfig,
     callback: (event: PlayerEvent) => void
   ) => Promise<PlayerNativeObject>
 

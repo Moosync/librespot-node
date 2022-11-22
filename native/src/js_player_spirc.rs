@@ -21,9 +21,9 @@ use crate::{
     utils::create_js_obj_from_event,
 };
 
-impl Finalize for JsPlayerWrapper {}
+impl Finalize for JsPlayerSpircWrapper {}
 
-pub struct JsPlayerWrapper {
+pub struct JsPlayerSpircWrapper {
     tx: mpsc::Sender<Message>,
     device_id: String,
 }
@@ -35,13 +35,17 @@ pub enum Message {
     Close,
 }
 
-impl JsPlayerWrapper {
-    pub fn new<'a, C>(
-        cx: &mut C,
-        username: String,
-        password: String,
-        auth_type: String,
-    ) -> Result<Self, Error>
+pub struct SpircConstructorConfig {
+    pub username: String,
+    pub password: String,
+    pub auth_type: String,
+    pub backend: String,
+    pub normalization: bool,
+    pub normalization_pregain: f64,
+}
+
+impl JsPlayerSpircWrapper {
+    pub fn new<'a, C>(cx: &mut C, config: SpircConstructorConfig) -> Result<Self, Error>
     where
         C: Context<'a>,
     {
@@ -64,14 +68,17 @@ impl JsPlayerWrapper {
                 .unwrap();
 
             runtime.block_on(async {
-                let credentials = create_credentials(username, password, auth_type);
+                let credentials =
+                    create_credentials(config.username, config.password, config.auth_type);
                 let session = create_session().clone();
-                let player_config = create_player_config();
+                let player_config =
+                    create_player_config(config.normalization, config.normalization_pregain);
                 let connect_config = create_connect_config();
 
                 let device_id = session.device_id().to_string();
 
-                let (player, mixer) = new_player(session.clone(), player_config.clone());
+                let (player, mixer) =
+                    new_player(config.backend, session.clone(), player_config.clone());
 
                 let events_channel = player.get_player_event_channel();
 
@@ -86,12 +93,12 @@ impl JsPlayerWrapper {
 
                 match res {
                     Ok((spirc, spirc_task)) => {
-                        JsPlayerWrapper::start_player_event_thread(
+                        JsPlayerSpircWrapper::start_player_event_thread(
                             event_callback_channel,
                             events_channel,
                             close_rx,
                         );
-                        JsPlayerWrapper::listen_commands(
+                        JsPlayerSpircWrapper::listen_commands(
                             rx,
                             spirc,
                             session.clone(),

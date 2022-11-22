@@ -2,19 +2,20 @@
 
 use constants::GLOBAL_JS_CALLBACK_METHOD;
 use futures::executor::block_on;
-use js_player::JsPlayerWrapper;
+use js_player_spirc::{JsPlayerSpircWrapper, SpircConstructorConfig};
 use librespot::{connect::spirc::Spirc, core::Session};
 use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
     result::{JsResult, NeonResult},
     types::{
-        Deferred, JsBox, JsFunction, JsNumber, JsPromise, JsString, JsUndefined, JsValue, Value,
+        Deferred, JsBoolean, JsBox, JsFunction, JsNumber, JsObject, JsPromise, JsString,
+        JsUndefined, JsValue, Value,
     },
 };
 use utils::token_to_obj;
 
 mod constants;
-mod js_player;
+mod js_player_spirc;
 mod player;
 mod utils;
 use env_logger;
@@ -25,7 +26,7 @@ fn send_to_player(
 ) -> Handle<JsPromise> {
     let player_wrapper = cx
         .this()
-        .downcast_or_throw::<JsBox<JsPlayerWrapper>, _>(&mut cx);
+        .downcast_or_throw::<JsBox<JsPlayerSpircWrapper>, _>(&mut cx);
 
     let (deferred, promise) = cx.promise();
     match player_wrapper {
@@ -47,10 +48,30 @@ fn send_to_player(
 }
 
 fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
-    let username = cx.argument::<JsString>(0)?.value(&mut cx);
-    let password = cx.argument::<JsString>(1)?.value(&mut cx);
-    let auth_type = cx.argument::<JsString>(2)?.value(&mut cx);
-    let callback = cx.argument::<JsFunction>(3)?;
+    let config = cx.argument::<JsObject>(0)?;
+
+    let constructor_config = SpircConstructorConfig {
+        username: config
+            .get::<JsString, _, _>(&mut cx, "username")?
+            .value(&mut cx),
+        password: config
+            .get::<JsString, _, _>(&mut cx, "password")?
+            .value(&mut cx),
+        auth_type: config
+            .get::<JsString, _, _>(&mut cx, "auth_type")?
+            .value(&mut cx),
+        backend: config
+            .get::<JsString, _, _>(&mut cx, "backend")?
+            .value(&mut cx),
+        normalization: config
+            .get::<JsBoolean, _, _>(&mut cx, "normalization")?
+            .value(&mut cx),
+        normalization_pregain: config
+            .get::<JsNumber, _, _>(&mut cx, "normalization_pregain")?
+            .value(&mut cx),
+    };
+
+    let callback = cx.argument::<JsFunction>(1)?;
 
     let (deferred, promise) = cx.promise();
     let channel = cx.channel();
@@ -61,7 +82,7 @@ fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
         .unwrap();
 
     deferred.settle_with(&channel, move |mut cx| {
-        let js_player = JsPlayerWrapper::new(&mut cx, username, password, auth_type);
+        let js_player = JsPlayerSpircWrapper::new(&mut cx, constructor_config);
         match js_player {
             Ok(_) => Ok(cx.boxed(js_player.unwrap())),
             Err(e) => cx.throw_error(format!("Failed to create player: {}", e.to_string())),
@@ -124,7 +145,7 @@ fn set_volume(mut cx: FunctionContext) -> JsResult<JsPromise> {
 
 fn close_player(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     cx.this()
-        .downcast_or_throw::<JsBox<JsPlayerWrapper>, _>(&mut cx)?
+        .downcast_or_throw::<JsBox<JsPlayerSpircWrapper>, _>(&mut cx)?
         .close()
         .or_else(|err| cx.throw_error(err.to_string()))?;
 
@@ -134,7 +155,7 @@ fn close_player(mut cx: FunctionContext) -> JsResult<JsUndefined> {
 fn get_device_id(mut cx: FunctionContext) -> JsResult<JsValue> {
     let player_wrapper = cx
         .this()
-        .downcast_or_throw::<JsBox<JsPlayerWrapper>, _>(&mut cx);
+        .downcast_or_throw::<JsBox<JsPlayerSpircWrapper>, _>(&mut cx);
 
     if player_wrapper.is_ok() {
         return Ok(cx
