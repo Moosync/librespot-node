@@ -3,10 +3,9 @@ use std::{
     thread,
 };
 
-use futures::FutureExt;
 use librespot::{
     core::Error,
-    core::{Session, SpotifyId},
+    core::Session,
     playback::{
         mixer::Mixer,
         player::{Player, PlayerEventChannel},
@@ -22,9 +21,7 @@ use tokio::runtime::Builder;
 use crate::{
     config::PlayerConstructorConfig,
     constants::GLOBAL_JS_CALLBACK_METHOD,
-    player::{
-        create_connect_config, create_credentials, create_player_config, create_session, new_player,
-    },
+    player::{create_credentials, create_player_config, create_session, new_player},
     utils::create_js_obj_from_event,
 };
 
