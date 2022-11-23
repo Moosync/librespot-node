@@ -92,9 +92,11 @@ export class SpotifyPlayer extends GenericPlayer {
   public async getToken(...scopes: TokenScope[]) {
     scopes = scopes && scopes.length > 0 ? scopes : DEFAULT_SCOPES
 
-    const cachedToken = await this.tokenHandler.getToken(scopes)
-    if (cachedToken) {
-      return cachedToken
+    if (this.saveToken) {
+      const cachedToken = await this.tokenHandler.getToken(scopes)
+      if (cachedToken) {
+        return cachedToken
+      }
     }
 
     const res = await _librespotModule.get_token.call(

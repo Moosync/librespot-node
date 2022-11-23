@@ -59,7 +59,8 @@ export abstract class GenericPlayer {
       | "create_player_spirc" = "create_player"
   ) {
     this.tokenHandler = new TokenHandler(
-      config.cache_path ?? path.join(__dirname, "token_dump")
+      config.cache_path ??
+        path.join(config.cache_path ?? __dirname, "token_dump")
     )
     this._positionHolder = new PositionHolder(config.pos_update_interval)
 
