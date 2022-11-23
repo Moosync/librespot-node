@@ -4,7 +4,11 @@ use std::{
 };
 
 use librespot::{
-    connect::spirc::Spirc, core::Error, core::Session, playback::player::PlayerEventChannel,
+    connect::{config::ConnectConfig, spirc::Spirc},
+    core::Error,
+    core::Session,
+    discovery::Credentials,
+    playback::{config::PlayerConfig, player::PlayerEventChannel},
 };
 use neon::{
     prelude::{Channel, Context, Handle, Object},
@@ -14,11 +18,8 @@ use neon::{
 use tokio::runtime::Builder;
 
 use crate::{
-    config::PlayerConstructorConfig,
     constants::GLOBAL_JS_CALLBACK_METHOD,
-    player::{
-        create_connect_config, create_credentials, create_player_config, create_session, new_player,
-    },
+    player::{create_session, new_player},
     utils::create_js_obj_from_event,
 };
 
@@ -37,7 +38,13 @@ pub enum Message {
 }
 
 impl JsPlayerSpircWrapper {
-    pub fn new<'a, C>(cx: &mut C, config: PlayerConstructorConfig) -> Result<Self, Error>
+    pub fn new<'a, C>(
+        cx: &mut C,
+        credentials: Credentials,
+        player_config: PlayerConfig,
+        connect_config: ConnectConfig,
+        backend: String,
+    ) -> Result<Self, Error>
     where
         C: Context<'a>,
     {
@@ -62,19 +69,11 @@ impl JsPlayerSpircWrapper {
             println!("here");
 
             runtime.block_on(async {
-                println!("{}", config.username.clone());
-                let credentials =
-                    create_credentials(config.username, config.password, config.auth_type);
-
                 let session = create_session().clone();
-                let player_config =
-                    create_player_config(config.normalization, config.normalization_pregain);
-                let connect_config = create_connect_config();
 
                 let device_id = session.device_id().to_string();
 
-                let (player, mixer) =
-                    new_player(config.backend, session.clone(), player_config.clone());
+                let (player, mixer) = new_player(backend, session.clone(), player_config.clone());
 
                 let events_channel = player.get_player_event_channel();
 

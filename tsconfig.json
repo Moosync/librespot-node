@@ -16,6 +16,8 @@
     "src/index.ts",
     "src/spirc.ts",
     "src/player.ts",
-    "src/types.ts"
+    "src/types.ts",
+    "src/tokenHandler.ts",
+    "src/positionHolder.ts"
   ]
 }

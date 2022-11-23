@@ -7,7 +7,7 @@ export class TokenHandler {
   private tokenMap: Token[] = []
   private filePath: PathLike
 
-  constructor(filePath: PathLike) {
+  constructor(filePath: string) {
     this.filePath = filePath
   }
 
@@ -37,11 +37,13 @@ export class TokenHandler {
     await this.readFile()
     for (const token of this.tokenMap) {
       // Check if required scopes are already cached
-      if (scopes.some((val) => token.scopes.includes(val)))
+      if (scopes.some((val) => token.scopes.includes(val))) {
+        console.log(scopes, "found in", token.scopes)
         if (token.expiry_from_epoch > Date.now()) {
           // Check if the matching token is not expired
           return token
         }
+      }
     }
   }
 }

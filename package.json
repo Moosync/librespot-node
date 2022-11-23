@@ -6,11 +6,10 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "cargo-cp-artifact -a cdylib librespot-node build/librespot.node -- cargo build --manifest-path=native/Cargo.toml --message-format=json-render-diagnostics",
-    "build-debug": "yarn run build",
-    "build-release": "yarn build --release",
-    "install": "yarn build-release && tsc",
-    "test": "cargo test --manifest-path=native/Cargo.toml",
-    "start": "npm run build-debug && ts-node src/index.ts"
+    "build-debug": "npm run build",
+    "build-release": "npm run build --release",
+    "install": "npm run build-release",
+    "start": "npm run install && tsc && node dist/index.js"
   },
   "author": "",
   "license": "MIT",

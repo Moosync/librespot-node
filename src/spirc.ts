@@ -1,183 +1,38 @@
-import bindings from "bindings"
-import EventEmitter from "events"
-import {
-  Token,
-  ConstructorConfig,
-  FetchConfig,
-  PlayerNativeObject,
-} from "./types"
-import {
-  LibrespotModule,
-  PlayerEvent,
-  PlayerEventTypes,
-  TokenScope,
-} from "./types"
-import path from "path"
-import { readFile, writeFile } from "fs/promises"
-import { request } from "./utils"
-import assert from "assert"
-import { PathLike } from "fs"
-import { TokenHandler } from "./tokenHandler"
-import { PositionHolder } from "./positionHolder"
-
-const librespotModule: LibrespotModule = bindings("librespot.node")
-
-const DEFAULT_SCOPES: TokenScope[] = [
-  "playlist-read-collaborative",
-  "user-follow-read",
-  "user-library-read",
-  "user-top-read",
-  "user-read-recently-played",
-  "user-modify-playback-state",
-]
-
-function safe_execution(
-  _: unknown,
-  propertyKey: string,
-  descriptor: TypedPropertyDescriptor<any>
-) {
-  const originalMethod = descriptor.value
-
-  descriptor.value = function (...args: unknown[]) {
-    if ((this as SpotifyPlayerSpirc).isInitialized) {
-      return originalMethod.call(this, ...args)
-    } else {
-      throw new Error(
-        `Cannot call method ${propertyKey} before player has initialized`
-      )
-    }
+import { ConstructorConfig, FetchConfig, FullConstructorConfig } from "./types"
+import { TokenScope } from "./types"
+import { request, DEFAULT_SCOPES, _librespotModule } from "./utils"
+import { GenericPlayer, safe_execution } from "./genericPlayer"
+export class SpotifyPlayerSpirc extends GenericPlayer {
+  protected onPlayerInitialized() {
+    this.device_id = _librespotModule.get_device_id_spirc.call(
+      this.playerInstance
+    )
   }
-
-  return descriptor
-}
-
-export class SpotifyPlayerSpirc {
-  private playerInstance: PlayerNativeObject | undefined
-
-  private device_id!: string
-  private eventEmitter = new EventEmitter()
-  private _isInitialized = false
-  private tokenHandler: TokenHandler
-  private _positionHolder: PositionHolder
-
-  private saveToken: boolean
-
-  private _volume = 0
 
   constructor(config: ConstructorConfig) {
-    console.log(librespotModule)
-    librespotModule
-      .create_player_spirc(
-        {
-          username: config.auth.username,
-          password: config.auth.password,
-          auth_type: config.auth.authType ?? "",
-          backend: "",
-          normalization: false,
-          normalization_pregain: 0,
-        },
-        this.player_event_callback.bind(this)
-      )
-      .then((val) => {
-        this.playerInstance = val
-        this.device_id = librespotModule.get_device_id_spirc.call(val)
-        this.registerListeners(config.initial_volume)
-        this._isInitialized = true
-        this.eventEmitter.emit("PlayerInitialized", {
-          event: "PlayerInitialized",
-        })
-      })
-      .catch((e) => {
-        this.eventEmitter.emit("InitializationError", {
-          event: "InitializationError",
-          error: e,
-        })
-      })
-
-    this.tokenHandler = new TokenHandler(
-      config.cache_path ?? path.join(__dirname, "token_dump")
-    )
-    this._positionHolder = new PositionHolder(config.pos_update_interval)
-    this._positionHolder.callback = (position_ms) => {
-      this.eventEmitter.emit("TimeUpdated", {
-        event: "TimeUpdated",
-        position_ms,
-      })
-    }
-    this.saveToken = config.save_tokens ?? false
-  }
-
-  private registerListeners(
-    initial_volume: ConstructorConfig["initial_volume"] | undefined
-  ) {
-    this.addListener("VolumeChanged", (event) => {
-      this._volume = event.volume
-    })
-
-    if (initial_volume) {
-      this.addListener("SessionConnected", () => {
-        this.setVolume(initial_volume.volume, initial_volume.raw)
-      })
-    }
-
-    this.addListener("Playing", (e) => {
-      this._positionHolder.setListener()
-      this._positionHolder.position = e.position_ms
-    })
-
-    this.addListener("Paused", (e) => {
-      this._positionHolder.clearListener()
-      this._positionHolder.position = e.position_ms
-    })
-
-    this.addListener("Stopped", (e) => {
-      this._positionHolder.clearListener()
-      this._positionHolder.position = 0
-    })
-
-    this.addListener("PositionCorrection", (e) => {
-      this._positionHolder.position = e.position_ms
-    })
-
-    this.addListener("Seeked", (e) => {
-      this._positionHolder.position = e.position_ms
-    })
-
-    this.addListener("TrackChanged", () => {
-      this._positionHolder.clearListener()
-      this._positionHolder.position = 0
-    })
-  }
-
-  public get isInitialized() {
-    return this._isInitialized
-  }
-
-  private player_event_callback(event: PlayerEvent) {
-    console.log(event)
-    this.eventEmitter.emit(event.event, event)
+    super(config, "create_player_spirc")
   }
 
   @safe_execution
   public async play() {
-    await librespotModule.play_spirc.call(this.playerInstance)
+    await _librespotModule.play_spirc.call(this.playerInstance)
   }
 
   @safe_execution
   public async pause() {
-    await librespotModule.pause_spirc.call(this.playerInstance)
+    await _librespotModule.pause_spirc.call(this.playerInstance)
   }
 
   @safe_execution
   public async seek(posMs: number) {
-    await librespotModule.seek_spirc.call(this.playerInstance, posMs)
+    await _librespotModule.seek_spirc.call(this.playerInstance, posMs)
   }
 
   @safe_execution
   public async close() {
     this._positionHolder.clearListener()
     this.eventEmitter.removeAllListeners()
-    await librespotModule.close_player_spirc.call(this.playerInstance)
+    await _librespotModule.close_player_spirc.call(this.playerInstance)
   }
 
   public getCurrentPosition() {
@@ -191,7 +46,7 @@ export class SpotifyPlayerSpirc {
       parsedVolume = (Math.max(Math.min(volume, 100), 0) / 100) * 65535
     }
 
-    librespotModule.set_volume_spirc.call(this.playerInstance, parsedVolume)
+    _librespotModule.set_volume_spirc.call(this.playerInstance, parsedVolume)
   }
 
   public getVolume(raw = false) {
@@ -203,15 +58,14 @@ export class SpotifyPlayerSpirc {
   }
 
   @safe_execution
-  public async load(trackURIs: string | string[], token?: string) {
+  public async load(trackURIs: string | string[]) {
+    const token = (await this.getToken("user-modify-playback-state"))
+      ?.access_token
     if (!token) {
-      token = (await this.getToken())?.access_token
-      if (!token) {
-        throw Error("Failed to get a valid access token")
-      }
+      throw Error("Failed to get a valid access token")
     }
 
-    console.log("using existing token", token)
+    console.debug("using existing token", token)
 
     const options: FetchConfig = {
       method: "PUT",
@@ -256,49 +110,18 @@ export class SpotifyPlayerSpirc {
     await request<void>("https://api.spotify.com/v1/me/player/play", options)
   }
 
-  public on = this.addListener
-  public off = this.removeListener
-
-  public addListener<T extends PlayerEventTypes>(
-    event: T,
-    callback: (event: PlayerEvent<T>) => void
-  ) {
-    return this.eventEmitter.addListener(event, callback)
-  }
-
-  public removeListener<T extends PlayerEventTypes>(
-    event: T,
-    callback: (event: PlayerEvent<T>) => void
-  ) {
-    return this.eventEmitter.removeListener(event, callback)
-  }
-
-  public once<T extends PlayerEventTypes>(
-    event: T,
-    callback: (event: PlayerEvent<T>) => void
-  ) {
-    return this.eventEmitter.once(event, callback)
-  }
-
-  public removeAllListeners() {
-    this.eventEmitter.removeAllListeners()
-    this.registerListeners(undefined)
-  }
-
-  public getDeviceId() {
-    return this.device_id
-  }
-
   @safe_execution
   public async getToken(...scopes: TokenScope[]) {
     scopes = scopes && scopes.length > 0 ? scopes : DEFAULT_SCOPES
 
-    const cachedToken = await this.tokenHandler.getToken(scopes)
-    if (cachedToken) {
-      return cachedToken
+    if (this.saveToken) {
+      const cachedToken = await this.tokenHandler.getToken(scopes)
+      if (cachedToken) {
+        return cachedToken
+      }
     }
 
-    const res = await librespotModule.get_token_spirc.call(
+    const res = await _librespotModule.get_token_spirc.call(
       this.playerInstance,
       scopes.join(",")
     )
@@ -315,21 +138,3 @@ export class SpotifyPlayerSpirc {
     return res
   }
 }
-
-const sp = new SpotifyPlayerSpirc({
-  auth: {
-    username: "ovenoboyo@gmail.com",
-    password: "kekboi69",
-  },
-})
-
-sp.addListener("PlayerInitialized", async () => {
-  console.log("initialized")
-  await sp.load("spotify:track:4SF6S1UUsTes8qQfpnnOWB")
-  await sp.play()
-  await sp.setVolume(100)
-})
-
-setInterval(() => {
-  console.log("spirc", (global as any)._watch_player_events_global)
-}, 2000)
