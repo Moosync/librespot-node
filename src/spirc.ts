@@ -113,11 +113,9 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
   public async getToken(...scopes: TokenScope[]) {
     scopes = scopes && scopes.length > 0 ? scopes : DEFAULT_SCOPES
 
-    if (this.saveToken) {
-      const cachedToken = await this.tokenHandler.getToken(scopes)
-      if (cachedToken) {
-        return cachedToken
-      }
+    const cachedToken = await this.tokenHandler.getToken(scopes)
+    if (cachedToken) {
+      return cachedToken
     }
 
     const res = await _librespotModule.get_token_spirc.call(

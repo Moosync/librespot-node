@@ -1,18 +1,6 @@
 import bindings from "bindings"
-import EventEmitter from "events"
 import https, { RequestOptions } from "https"
-import path from "path"
-import { PositionHolder } from "./positionHolder"
-import { TokenHandler } from "./tokenHandler"
-import {
-  ConstructorConfig,
-  FetchConfig,
-  LibrespotModule,
-  PlayerEvent,
-  PlayerEventTypes,
-  PlayerNativeObject,
-  TokenScope,
-} from "./types"
+import { FetchConfig, LibrespotModule, TokenScope } from "./types"
 
 export function request<T>(url: string, config: FetchConfig): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -78,4 +66,4 @@ export const DEFAULT_SCOPES: TokenScope[] = [
   "user-modify-playback-state",
 ]
 
-export const _librespotModule: LibrespotModule = bindings("librespot.node")
+export const _librespotModule: LibrespotModule = require("../build/librespot.node")
