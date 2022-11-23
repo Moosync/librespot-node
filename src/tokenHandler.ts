@@ -38,7 +38,6 @@ export class TokenHandler {
     for (const token of this.tokenMap) {
       // Check if required scopes are already cached
       if (scopes.some((val) => token.scopes.includes(val))) {
-        console.log(scopes, "found in", token.scopes)
         if (token.expiry_from_epoch > Date.now()) {
           // Check if the matching token is not expired
           return token

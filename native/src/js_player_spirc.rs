@@ -66,8 +66,6 @@ impl JsPlayerSpircWrapper {
                 .build()
                 .unwrap();
 
-            println!("here");
-
             runtime.block_on(async {
                 let session = create_session().clone();
 
@@ -124,7 +122,6 @@ impl JsPlayerSpircWrapper {
         close_rx: mpsc::Receiver<()>,
     ) {
         thread::spawn(move || loop {
-            println!("looping");
             let close_message = close_rx.try_recv();
             match close_message {
                 Ok(_) => break,
@@ -133,7 +130,6 @@ impl JsPlayerSpircWrapper {
 
             let message = event_channel.blocking_recv();
             if message.is_some() {
-                println!("got message");
                 channel.send(move |mut cx| {
                     let callback: Handle<JsFunction> =
                         cx.global().get(&mut cx, GLOBAL_JS_CALLBACK_METHOD).unwrap();

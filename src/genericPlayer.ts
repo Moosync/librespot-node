@@ -106,7 +106,6 @@ export abstract class GenericPlayer {
       | "create_player_spirc" = "create_player"
   ) {
     let validatedConfig = this.validateConfig(config)
-    console.log(validatedConfig)
     this.tokenHandler = new TokenHandler(validatedConfig.cache_path)
     this._positionHolder = new PositionHolder(config.pos_update_interval)
 
