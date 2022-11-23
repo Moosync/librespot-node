@@ -1,10 +1,20 @@
+use std::str::FromStr;
+
 use librespot::{
+    connect::config::ConnectConfig,
     core::{spotify_id::SpotifyId, token::Token},
-    playback::player::PlayerEvent,
+    discovery::{Credentials, DeviceType},
+    playback::{
+        config::{Bitrate, NormalisationMethod, NormalisationType, PlayerConfig},
+        dither::{mk_ditherer, TriangularDitherer},
+        player::PlayerEvent,
+    },
+    protocol::authentication::AuthenticationType,
 };
 use neon::{
-    prelude::{Context, Handle, Object},
-    types::{JsObject, JsValue, Value},
+    prelude::{Context, FunctionContext, Handle, Object},
+    result::Throw,
+    types::{JsBoolean, JsNumber, JsObject, JsString, JsValue, Value},
 };
 
 pub fn create_js_obj_from_event<'a, C>(cx: C, event: PlayerEvent) -> (Handle<'a, JsObject>, C)
@@ -227,4 +237,104 @@ where
     let ctx = obj.context;
 
     return (js_obj, ctx);
+}
+
+fn get_auth_type(auth_type: String) -> AuthenticationType {
+    match auth_type.as_str() {
+        "AUTHENTICATION_USER_PASS" => AuthenticationType::AUTHENTICATION_USER_PASS,
+        "AUTHENTICATION_STORED_SPOTIFY_CREDENTIALS" => AuthenticationType::AUTHENTICATION_USER_PASS,
+        "AUTHENTICATION_STORED_FACEBOOK_CREDENTIALS" => {
+            AuthenticationType::AUTHENTICATION_STORED_FACEBOOK_CREDENTIALS
+        }
+        "AUTHENTICATION_SPOTIFY_TOKEN" => AuthenticationType::AUTHENTICATION_SPOTIFY_TOKEN,
+        "AUTHENTICATION_FACEBOOK_TOKEN" => AuthenticationType::AUTHENTICATION_FACEBOOK_TOKEN,
+        _ => AuthenticationType::AUTHENTICATION_USER_PASS,
+    }
+}
+
+pub fn get_credentials_from_obj(
+    cx: &mut FunctionContext,
+    obj: Handle<JsObject>,
+) -> Result<Credentials, Throw> {
+    let auth_config = obj.get::<JsObject, _, _>(cx, "auth")?;
+    Ok(Credentials {
+        username: auth_config.get::<JsString, _, _>(cx, "username")?.value(cx),
+        auth_type: get_auth_type(auth_config.get::<JsString, _, _>(cx, "authType")?.value(cx)),
+        auth_data: auth_config
+            .get::<JsString, _, _>(cx, "password")?
+            .value(cx)
+            .into_bytes(),
+    })
+}
+
+pub fn get_player_config_from_obj(
+    cx: &mut FunctionContext,
+    obj: Handle<JsObject>,
+) -> Result<PlayerConfig, Throw> {
+    let normalization_config = obj.get::<JsObject, _, _>(cx, "normalizationConfig")?;
+
+    Ok(PlayerConfig {
+        bitrate: Bitrate::from_str(obj.get::<JsString, _, _>(cx, "bitrate")?.value(cx).as_str())
+            .unwrap_or_default(),
+        gapless: obj.get::<JsBoolean, _, _>(cx, "gapless")?.value(cx),
+        passthrough: obj.get::<JsBoolean, _, _>(cx, "passThrough")?.value(cx),
+        normalisation: normalization_config
+            .get::<JsBoolean, _, _>(cx, "normalization")?
+            .value(cx),
+        normalisation_type: NormalisationType::from_str(
+            normalization_config
+                .get::<JsString, _, _>(cx, "normalizationType")?
+                .value(cx)
+                .as_str(),
+        )
+        .unwrap_or_default(),
+        normalisation_method: NormalisationMethod::from_str(
+            normalization_config
+                .get::<JsString, _, _>(cx, "normalizationMethod")?
+                .value(cx)
+                .as_str(),
+        )
+        .unwrap_or_default(),
+        normalisation_pregain_db: normalization_config
+            .get::<JsNumber, _, _>(cx, "normalizationPregain")?
+            .value(cx),
+        normalisation_threshold_dbfs: normalization_config
+            .get::<JsNumber, _, _>(cx, "normalizationThreshold")?
+            .value(cx),
+        normalisation_attack_cf: normalization_config
+            .get::<JsNumber, _, _>(cx, "normalizationAttackCF")?
+            .value(cx),
+        normalisation_release_cf: normalization_config
+            .get::<JsNumber, _, _>(cx, "normalizationReleaseCF")?
+            .value(cx),
+        normalisation_knee_db: normalization_config
+            .get::<JsNumber, _, _>(cx, "normalizationKneeDB")?
+            .value(cx),
+        ditherer: Some(mk_ditherer::<TriangularDitherer>),
+    })
+}
+
+pub fn get_connect_config_from_obj(
+    cx: &mut FunctionContext,
+    obj: Handle<JsObject>,
+) -> Result<ConnectConfig, Throw> {
+    let connect_config = obj.get::<JsObject, _, _>(cx, "connectConfig")?;
+    Ok(ConnectConfig {
+        name: connect_config.get::<JsString, _, _>(cx, "name")?.value(cx),
+        device_type: DeviceType::from_str(
+            connect_config
+                .get::<JsString, _, _>(cx, "deviceType")?
+                .value(cx)
+                .as_str(),
+        )
+        .unwrap_or_default(),
+        initial_volume: Some(
+            connect_config
+                .get::<JsNumber, _, _>(cx, "initialVolume")?
+                .value(cx) as u16,
+        ),
+        has_volume_ctrl: connect_config
+            .get::<JsBoolean, _, _>(cx, "hasVolumeControl")?
+            .value(cx),
+    })
 }

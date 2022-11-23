@@ -1,20 +1,9 @@
-import { PathLike } from "fs"
-
 export type PlayerNativeObject = never
-
-export interface PlayerConfig {
-  username: string
-  password: string
-  auth_type: string
-  backend: string
-  normalization: boolean
-  normalization_pregain: number
-}
 
 export interface LibrespotModule {
   // Non spirc player
   create_player: (
-    config: PlayerConfig,
+    config: FullConstructorConfig,
     callback: (event: PlayerEvent) => void
   ) => Promise<PlayerNativeObject>
 
@@ -33,7 +22,7 @@ export interface LibrespotModule {
 
   // Spirc player
   create_player_spirc: (
-    config: PlayerConfig,
+    config: FullConstructorConfig,
     callback: (event: PlayerEvent) => void
   ) => Promise<PlayerNativeObject>
 
@@ -54,12 +43,64 @@ export interface FetchConfig {
   auth?: string
 }
 
+export interface NormalizationConfig {
+  normalization: boolean
+  normalizationPregain: number
+  normalizationType: "auto" | "album" | "track"
+  normalizationMethod: "dynamic" | "basic"
+  normalizationAttackCF: number
+  normalizationKneeDB: number
+  normalizationReleaseCF: number
+  normalizationThreshold: number
+}
+
+export interface ConnectConfig {
+  name: string
+  deviceType:
+    | "computer"
+    | "tablet"
+    | "smartphone"
+    | "speaker"
+    | "tv"
+    | "avr"
+    | "stb"
+    | "audiodongle"
+    | "gameconsole"
+    | "castaudio"
+    | "castvideo"
+    | "automobile"
+    | "smartwatch"
+    | "chromebook"
+    | "carthing"
+    | "homething"
+  initialVolume: number
+  hasVolumeControl: boolean
+}
+
 export interface ConstructorConfig {
-  auth: AuthDetails
+  auth: Partial<AuthDetails>
   save_tokens?: boolean
-  cache_path?: PathLike
-  initial_volume?: { volume: number; raw?: boolean }
+  cache_path?: string
   pos_update_interval?: number
+  backend?: string
+  gapless?: boolean
+  bitrate?: "96" | "160" | "320"
+  passThrough?: boolean
+  normalizationConfig?: Partial<NormalizationConfig>
+  connectConfig?: Partial<ConnectConfig>
+}
+
+export interface FullConstructorConfig {
+  auth: AuthDetails
+  save_tokens: boolean
+  cache_path: string
+  pos_update_interval: number
+  backend: string
+  gapless: boolean
+  bitrate: "96" | "160" | "320"
+  passThrough: boolean
+  normalizationConfig: NormalizationConfig
+  connectConfig: ConnectConfig
 }
 
 export interface AuthDetails {

@@ -2,10 +2,10 @@ import EventEmitter from "events"
 import path from "path"
 import { TokenHandler } from "./tokenHandler"
 import { PositionHolder } from "./positionHolder"
-import { Token } from "./types"
+import { ConstructorConfig, Token } from "./types"
 import {
   PlayerNativeObject,
-  ConstructorConfig,
+  FullConstructorConfig,
   PlayerEvent,
   PlayerEventTypes,
   TokenScope,
@@ -52,34 +52,73 @@ export abstract class GenericPlayer {
 
   protected abstract onPlayerInitialized(): void
 
+  private validateConfig(config: ConstructorConfig): FullConstructorConfig {
+    if (!config.auth) {
+      throw new Error("missing auth details from config")
+    }
+
+    if (!config.auth.username || !config.auth.password) {
+      throw new Error("missing username or password from config")
+    }
+
+    config.auth.authType = config.auth.authType ?? "AUTHENTICATION_USER_PASS"
+
+    config.backend = config.backend ?? ""
+    config.bitrate = config.bitrate ?? "320"
+    config.gapless = config.gapless ?? false
+    config.passThrough = config.passThrough ?? false
+
+    config.connectConfig = {
+      deviceType: config.connectConfig?.deviceType ?? "computer",
+      hasVolumeControl: config.connectConfig?.hasVolumeControl ?? true,
+      initialVolume: config.connectConfig?.initialVolume ?? 32768,
+      name: config.connectConfig?.name ?? "librespot",
+    }
+
+    config.normalizationConfig = {
+      normalization: config.normalizationConfig?.normalization ?? false,
+      normalizationType:
+        config.normalizationConfig?.normalizationType ?? "auto",
+      normalizationMethod:
+        config.normalizationConfig?.normalizationMethod ?? "basic",
+      normalizationAttackCF:
+        config.normalizationConfig?.normalizationAttackCF ?? 0,
+      normalizationKneeDB: config.normalizationConfig?.normalizationKneeDB ?? 0,
+      normalizationPregain:
+        config.normalizationConfig?.normalizationPregain ?? 0,
+      normalizationReleaseCF:
+        config.normalizationConfig?.normalizationReleaseCF ?? 0,
+      normalizationThreshold:
+        config.normalizationConfig?.normalizationThreshold ?? 0,
+    }
+
+    config.save_tokens = config.save_tokens ?? false
+    config.pos_update_interval = config.pos_update_interval ?? 500
+    config.cache_path = path.join(config.cache_path ?? __dirname, "token_dump")
+
+    return config as FullConstructorConfig
+  }
+
   constructor(
     config: ConstructorConfig,
     playerConstructMethod:
       | "create_player"
       | "create_player_spirc" = "create_player"
   ) {
-    this.tokenHandler = new TokenHandler(
-      config.cache_path ??
-        path.join(config.cache_path ?? __dirname, "token_dump")
-    )
+    let validatedConfig = this.validateConfig(config)
+    console.log(validatedConfig)
+    this.tokenHandler = new TokenHandler(validatedConfig.cache_path)
     this._positionHolder = new PositionHolder(config.pos_update_interval)
 
     _librespotModule[playerConstructMethod](
-      {
-        username: config.auth.username,
-        password: config.auth.password,
-        auth_type: config.auth.authType ?? "",
-        backend: "",
-        normalization: false,
-        normalization_pregain: 0,
-      },
+      validatedConfig,
       this.player_event_callback.bind(this)
     )
       .then((val) => {
         this.playerInstance = val
 
         this.onPlayerInitialized()
-        this.registerListeners(config.initial_volume)
+        this.registerListeners()
         this._isInitialized = true
         this.eventEmitter.emit("PlayerInitialized", {
           event: "PlayerInitialized",
@@ -105,18 +144,10 @@ export abstract class GenericPlayer {
     this.eventEmitter.emit(event.event, event)
   }
 
-  private registerListeners(
-    initial_volume: ConstructorConfig["initial_volume"] | undefined
-  ) {
+  private registerListeners() {
     this.addListener("VolumeChanged", (event) => {
       this._volume = event.volume
     })
-
-    if (initial_volume) {
-      this.addListener("SessionConnected", () => {
-        this.setVolume(initial_volume.volume, initial_volume.raw)
-      })
-    }
 
     this.addListener("Playing", (e) => {
       this._positionHolder.setListener()
@@ -173,7 +204,7 @@ export abstract class GenericPlayer {
 
   public removeAllListeners() {
     this.eventEmitter.removeAllListeners()
-    this.registerListeners(undefined)
+    this.registerListeners()
   }
 
   public getDeviceId() {

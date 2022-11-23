@@ -1,6 +1,5 @@
 // TODO: Use unwrap_or_... instead of unwraps
 
-use config::PlayerConstructorConfig;
 use constants::GLOBAL_JS_CALLBACK_METHOD;
 use futures::executor::block_on;
 use js_player::JsPlayerWrapper;
@@ -18,9 +17,10 @@ use neon::{
         JsUndefined, JsValue, Value,
     },
 };
-use utils::token_to_obj;
+use utils::{
+    get_connect_config_from_obj, get_credentials_from_obj, get_player_config_from_obj, token_to_obj,
+};
 
-mod config;
 mod constants;
 mod js_player;
 mod js_player_spirc;
@@ -86,35 +86,6 @@ fn send_to_player(
     return promise;
 }
 
-fn parse_constructor_config<'a>(
-    mut cx: FunctionContext<'a>,
-    config: Handle<'a, JsObject>,
-) -> NeonResult<(PlayerConstructorConfig, FunctionContext<'a>)> {
-    Ok((
-        PlayerConstructorConfig {
-            username: config
-                .get::<JsString, _, _>(&mut cx, "username")?
-                .value(&mut cx),
-            password: config
-                .get::<JsString, _, _>(&mut cx, "password")?
-                .value(&mut cx),
-            auth_type: config
-                .get::<JsString, _, _>(&mut cx, "auth_type")?
-                .value(&mut cx),
-            backend: config
-                .get::<JsString, _, _>(&mut cx, "backend")?
-                .value(&mut cx),
-            normalization: config
-                .get::<JsBoolean, _, _>(&mut cx, "normalization")?
-                .value(&mut cx),
-            normalization_pregain: config
-                .get::<JsNumber, _, _>(&mut cx, "normalization_pregain")?
-                .value(&mut cx),
-        },
-        cx,
-    ))
-}
-
 fn create_player_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let config = cx.argument::<JsObject>(0)?;
 
@@ -123,7 +94,12 @@ fn create_player_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let (deferred, promise) = cx.promise();
     let channel = cx.channel();
 
-    let (constructor_config, mut cx) = parse_constructor_config(cx, config)?;
+    let credentials = get_credentials_from_obj(&mut cx, config)?;
+    let player_config = get_player_config_from_obj(&mut cx, config)?;
+    let connect_config = get_connect_config_from_obj(&mut cx, config)?;
+    let backend = config
+        .get::<JsString, _, _>(&mut cx, "backend")?
+        .value(&mut cx);
 
     let global = cx.global();
     global
@@ -131,7 +107,8 @@ fn create_player_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
         .unwrap();
 
     deferred.settle_with(&channel, move |mut cx| {
-        let js_player = JsPlayerSpircWrapper::new(&mut cx, constructor_config);
+        let js_player =
+            JsPlayerSpircWrapper::new(&mut cx, credentials, player_config, connect_config, backend);
         match js_player {
             Ok(_) => Ok(cx.boxed(js_player.unwrap())),
             Err(e) => cx.throw_error(format!("Failed to create player: {}", e.to_string())),
@@ -237,7 +214,11 @@ fn get_token_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
 fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let config = cx.argument::<JsObject>(0)?;
 
-    let (constructor_config, mut cx) = parse_constructor_config(cx, config)?;
+    let credentials = get_credentials_from_obj(&mut cx, config)?;
+    let player_config = get_player_config_from_obj(&mut cx, config)?;
+    let backend = config
+        .get::<JsString, _, _>(&mut cx, "backend")?
+        .value(&mut cx);
 
     let callback = cx.argument::<JsFunction>(1)?;
 
@@ -250,7 +231,7 @@ fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
         .unwrap();
 
     deferred.settle_with(&channel, move |mut cx| {
-        let js_player = JsPlayerWrapper::new(&mut cx, constructor_config);
+        let js_player = JsPlayerWrapper::new(&mut cx, credentials, player_config, backend);
         match js_player {
             Ok(_) => Ok(cx.boxed(js_player.unwrap())),
             Err(e) => cx.throw_error(format!("Failed to create player: {}", e.to_string())),

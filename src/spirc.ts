@@ -1,4 +1,4 @@
-import { FetchConfig, ConstructorConfig } from "./types"
+import { ConstructorConfig, FetchConfig, FullConstructorConfig } from "./types"
 import { TokenScope } from "./types"
 import { request, DEFAULT_SCOPES, _librespotModule } from "./utils"
 import { GenericPlayer, safe_execution } from "./genericPlayer"
@@ -59,7 +59,8 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
 
   @safe_execution
   public async load(trackURIs: string | string[]) {
-    const token = (await this.getToken())?.access_token
+    const token = (await this.getToken("user-modify-playback-state"))
+      ?.access_token
     if (!token) {
       throw Error("Failed to get a valid access token")
     }
@@ -113,9 +114,11 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
   public async getToken(...scopes: TokenScope[]) {
     scopes = scopes && scopes.length > 0 ? scopes : DEFAULT_SCOPES
 
-    const cachedToken = await this.tokenHandler.getToken(scopes)
-    if (cachedToken) {
-      return cachedToken
+    if (this.saveToken) {
+      const cachedToken = await this.tokenHandler.getToken(scopes)
+      if (cachedToken) {
+        return cachedToken
+      }
     }
 
     const res = await _librespotModule.get_token_spirc.call(

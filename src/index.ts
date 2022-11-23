@@ -3,6 +3,8 @@ export * from "./player"
 export {
   LibrespotModule,
   ConstructorConfig,
+  NormalizationConfig,
+  ConnectConfig,
   AuthDetails,
   PlayerEventTypes,
   PlayerEvent,

@@ -8,8 +8,8 @@
     "build": "cargo-cp-artifact -a cdylib librespot-node build/librespot.node -- cargo build --manifest-path=native/Cargo.toml --message-format=json-render-diagnostics",
     "build-debug": "npm run build",
     "build-release": "npm run build --release",
-    "install": "npm run build-release && tsc",
-    "start": "npm run install && node dist/index.js"
+    "install": "npm run build-release",
+    "start": "npm run install && tsc && node dist/index.js"
   },
   "author": "",
   "license": "MIT",
