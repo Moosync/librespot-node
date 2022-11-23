@@ -1,5 +1,18 @@
+import bindings from "bindings"
+import EventEmitter from "events"
 import https, { RequestOptions } from "https"
-import { FetchConfig, TokenScope } from "./types"
+import path from "path"
+import { PositionHolder } from "./positionHolder"
+import { TokenHandler } from "./tokenHandler"
+import {
+  ConstructorConfig,
+  FetchConfig,
+  LibrespotModule,
+  PlayerEvent,
+  PlayerEventTypes,
+  PlayerNativeObject,
+  TokenScope,
+} from "./types"
 
 export function request<T>(url: string, config: FetchConfig): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -43,7 +56,6 @@ export function request<T>(url: string, config: FetchConfig): Promise<T> {
             resolve(data as T)
           }
         } else {
-          console.log(data, res.statusCode)
           reject(data)
         }
       })
@@ -51,7 +63,6 @@ export function request<T>(url: string, config: FetchConfig): Promise<T> {
 
     req.on("error", reject)
     if (config.body) {
-      console.log("body", JSON.stringify(config.body))
       req.write(JSON.stringify(config.body))
     }
     req.end()
@@ -66,28 +77,5 @@ export const DEFAULT_SCOPES: TokenScope[] = [
   "user-read-recently-played",
   "user-modify-playback-state",
 ]
-export class GenericPlayer {
-  get isInitialized() {
-    return false
-  }
-}
 
-export function safe_execution(
-  _: unknown,
-  propertyKey: string,
-  descriptor: TypedPropertyDescriptor<any>
-) {
-  const originalMethod = descriptor.value
-
-  descriptor.value = function (...args: unknown[]) {
-    if ((this as GenericPlayer).isInitialized) {
-      return originalMethod.call(this, ...args)
-    } else {
-      throw new Error(
-        `Cannot call method ${propertyKey} before player has initialized`
-      )
-    }
-  }
-
-  return descriptor
-}
+export const _librespotModule: LibrespotModule = bindings("librespot.node")

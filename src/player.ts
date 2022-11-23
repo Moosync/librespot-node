@@ -1,146 +1,32 @@
-import bindings from "bindings"
-import EventEmitter from "events"
-import { ConstructorConfig, PlayerNativeObject } from "./types"
-import {
-  LibrespotModule,
-  PlayerEvent,
-  PlayerEventTypes,
-  TokenScope,
-} from "./types"
-import { DEFAULT_SCOPES, GenericPlayer, safe_execution } from "./utils"
-import { PositionHolder } from "./positionHolder"
-import { TokenHandler } from "./tokenHandler"
-import path from "path"
-
-const librespotModule: LibrespotModule = bindings("librespot.node")
+import { TokenScope } from "./types"
+import { DEFAULT_SCOPES, _librespotModule } from "./utils"
+import { GenericPlayer, safe_execution } from "./genericPlayer"
 
 export class SpotifyPlayer extends GenericPlayer {
-  private playerInstance: PlayerNativeObject | undefined
-
-  private device_id!: string
-  private eventEmitter = new EventEmitter()
-  private _isInitialized = false
-  private tokenHandler: TokenHandler
-  private _positionHolder: PositionHolder
-
-  private saveToken: boolean
-
-  private _volume = 0
-
-  constructor(config: ConstructorConfig) {
-    super()
-    librespotModule
-      .create_player(
-        {
-          username: config.auth.username,
-          password: config.auth.password,
-          auth_type: config.auth.authType ?? "",
-          backend: "",
-          normalization: false,
-          normalization_pregain: 0,
-        },
-        this.player_event_callback.bind(this)
-      )
-      .then((val) => {
-        this.playerInstance = val
-        this.device_id = librespotModule.get_device_id.call(val)
-        this.registerListeners(config.initial_volume)
-        this._isInitialized = true
-        this.eventEmitter.emit("PlayerInitialized", {
-          event: "PlayerInitialized",
-        })
-      })
-      .catch((e) => {
-        this.eventEmitter.emit("InitializationError", {
-          event: "InitializationError",
-          error: e,
-        })
-      })
-
-    this.tokenHandler = new TokenHandler(
-      config.cache_path ?? path.join(__dirname, "token_dump")
-    )
-    this._positionHolder = new PositionHolder(config.pos_update_interval)
-    this._positionHolder.callback = (position_ms) => {
-      this.eventEmitter.emit("TimeUpdated", {
-        event: "TimeUpdated",
-        position_ms,
-      })
-    }
-    this.saveToken = config.save_tokens ?? false
-  }
-
-  private registerListeners(
-    initial_volume: ConstructorConfig["initial_volume"] | undefined
-  ) {
-    this.addListener("VolumeChanged", (event) => {
-      this._volume = event.volume
-    })
-
-    if (initial_volume) {
-      this.addListener("SessionConnected", () => {
-        this.setVolume(initial_volume.volume, initial_volume.raw)
-      })
-    }
-
-    this.addListener("Playing", (e) => {
-      this._positionHolder.setListener()
-      this._positionHolder.position = e.position_ms
-    })
-
-    this.addListener("Paused", (e) => {
-      this._positionHolder.clearListener()
-      this._positionHolder.position = e.position_ms
-    })
-
-    this.addListener("Stopped", (e) => {
-      this._positionHolder.clearListener()
-      this._positionHolder.position = 0
-    })
-
-    this.addListener("PositionCorrection", (e) => {
-      this._positionHolder.position = e.position_ms
-    })
-
-    this.addListener("Seeked", (e) => {
-      this._positionHolder.position = e.position_ms
-    })
-
-    this.addListener("TrackChanged", () => {
-      this._positionHolder.clearListener()
-      this._positionHolder.position = 0
-    })
-  }
-
-  public get isInitialized() {
-    return this._isInitialized
-  }
-
-  private player_event_callback(event: PlayerEvent) {
-    console.log(event)
-    this.eventEmitter.emit(event.event, event)
+  protected onPlayerInitialized() {
+    this.device_id = _librespotModule.get_device_id.call(this.playerInstance)
   }
 
   @safe_execution
   public async play() {
-    await librespotModule.play.call(this.playerInstance)
+    await _librespotModule.play.call(this.playerInstance)
   }
 
   @safe_execution
   public async pause() {
-    await librespotModule.pause.call(this.playerInstance)
+    await _librespotModule.pause.call(this.playerInstance)
   }
 
   @safe_execution
   public async seek(posMs: number) {
-    await librespotModule.seek.call(this.playerInstance, posMs)
+    await _librespotModule.seek.call(this.playerInstance, posMs)
   }
 
   @safe_execution
   public async close() {
     this._positionHolder.clearListener()
     this.eventEmitter.removeAllListeners()
-    await librespotModule.close_player.call(this.playerInstance)
+    await _librespotModule.close_player.call(this.playerInstance)
   }
 
   public getCurrentPosition() {
@@ -154,7 +40,7 @@ export class SpotifyPlayer extends GenericPlayer {
       parsedVolume = (Math.max(Math.min(volume, 100), 0) / 100) * 65535
     }
 
-    librespotModule.set_volume.call(this.playerInstance, parsedVolume)
+    await _librespotModule.set_volume.call(this.playerInstance, parsedVolume)
   }
 
   public getVolume(raw = false) {
@@ -193,46 +79,13 @@ export class SpotifyPlayer extends GenericPlayer {
     }
 
     for (const t of trackURIs) {
-      await librespotModule.load_track.call(
+      await _librespotModule.load_track.call(
         this.playerInstance,
         t,
         autoPlay,
         startPosition
       )
     }
-  }
-
-  public on = this.addListener
-  public off = this.removeListener
-
-  public addListener<T extends PlayerEventTypes>(
-    event: T,
-    callback: (event: PlayerEvent<T>) => void
-  ) {
-    return this.eventEmitter.addListener(event, callback)
-  }
-
-  public removeListener<T extends PlayerEventTypes>(
-    event: T,
-    callback: (event: PlayerEvent<T>) => void
-  ) {
-    return this.eventEmitter.removeListener(event, callback)
-  }
-
-  public once<T extends PlayerEventTypes>(
-    event: T,
-    callback: (event: PlayerEvent<T>) => void
-  ) {
-    return this.eventEmitter.once(event, callback)
-  }
-
-  public removeAllListeners() {
-    this.eventEmitter.removeAllListeners()
-    this.registerListeners(undefined)
-  }
-
-  public getDeviceId() {
-    return this.device_id
   }
 
   @safe_execution
@@ -244,7 +97,7 @@ export class SpotifyPlayer extends GenericPlayer {
       return cachedToken
     }
 
-    const res = await librespotModule.get_token.call(
+    const res = await _librespotModule.get_token.call(
       this.playerInstance,
       scopes.join(",")
     )
@@ -261,15 +114,3 @@ export class SpotifyPlayer extends GenericPlayer {
     return res
   }
 }
-
-const sp = new SpotifyPlayer({
-  auth: {
-    username: "ovenoboyo@gmail.com",
-    password: "kekboi69",
-  },
-})
-
-sp.on("PlayerInitialized", async () => {
-  const token = await sp.getToken()
-  console.log(token)
-})
