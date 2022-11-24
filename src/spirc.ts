@@ -1,4 +1,4 @@
-import { ConstructorConfig, FetchConfig, FullConstructorConfig } from "./types"
+import { ConstructorConfig } from "./types"
 import { TokenScope } from "./types"
 import { request, DEFAULT_SCOPES, _librespotModule } from "./utils"
 import { GenericPlayer, safe_execution } from "./genericPlayer"

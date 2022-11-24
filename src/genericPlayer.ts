@@ -3,13 +3,7 @@ import path from "path"
 import { TokenHandler } from "./tokenHandler"
 import { PositionHolder } from "./positionHolder"
 import { ConstructorConfig, Token } from "./types"
-import {
-  PlayerNativeObject,
-  FullConstructorConfig,
-  PlayerEvent,
-  PlayerEventTypes,
-  TokenScope,
-} from "./types"
+import { PlayerEvent, PlayerEventTypes, TokenScope } from "./types"
 import { _librespotModule } from "./utils"
 
 export function safe_execution(

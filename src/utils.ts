@@ -1,6 +1,6 @@
 import bindings from "bindings"
 import https, { RequestOptions } from "https"
-import { FetchConfig, LibrespotModule, TokenScope } from "./types"
+import { TokenScope } from "./types"
 
 export function request<T>(url: string, config: FetchConfig): Promise<T> {
   return new Promise<T>((resolve, reject) => {
