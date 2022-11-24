@@ -9,7 +9,8 @@
     "build-debug": "npm run build",
     "build-release": "npm run build --release",
     "install": "npm run build-release",
-    "start": "npm run install && tsc && node dist/index.js"
+    "webpack:build": "webpack --config webpack.config.js",
+    "start": "npm run install && npm run webpack:build && node dist/index.js"
   },
   "author": "",
   "license": "MIT",
