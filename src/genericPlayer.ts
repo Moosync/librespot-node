@@ -4,7 +4,7 @@ import { TokenHandler } from "./tokenHandler"
 import { PositionHolder } from "./positionHolder"
 import { ConstructorConfig, Token } from "./types"
 import { PlayerEvent, PlayerEventTypes, TokenScope } from "./types"
-import { _librespotModule } from "./utils"
+import { TRACK_REGEX, _librespotModule } from "./utils"
 
 export function safe_execution(
   _: unknown,
@@ -202,6 +202,25 @@ export abstract class GenericPlayer {
 
   public getDeviceId() {
     return this.device_id
+  }
+
+  protected validateUri(val: string): [string | undefined, string | undefined] {
+    const match = val.match(TRACK_REGEX)
+
+    if (match?.groups?.type) {
+      if (match.groups.urlType?.startsWith("https")) {
+        const parsedUrl = new URL(val)
+        return [
+          `spotify:${match.groups.type}:${parsedUrl.pathname
+            .split("/")
+            .at(-1)}`,
+          match.groups.type,
+        ]
+      }
+      return [val, match.groups.type]
+    }
+
+    return [undefined, undefined]
   }
 
   public abstract setVolume(volume: number, raw?: boolean): Promise<void>

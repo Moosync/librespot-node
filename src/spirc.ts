@@ -58,25 +58,6 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
     return (this._volume / 65535) * 100
   }
 
-  private validateUri(val: string): [string | undefined, string | undefined] {
-    const match = val.match(TRACK_REGEX)
-
-    if (match?.groups?.type) {
-      if (match.groups.urlType?.startsWith("https")) {
-        const parsedUrl = new URL(val)
-        return [
-          `spotify:${match.groups.type}:${parsedUrl.pathname
-            .split("/")
-            .at(-1)}`,
-          match.groups.type,
-        ]
-      }
-      return [val, match.groups.type]
-    }
-
-    return [undefined, undefined]
-  }
-
   @safe_execution
   public async load(trackURIs: string | string[]) {
     const token = (await this.getToken("user-modify-playback-state"))
@@ -153,7 +134,6 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
   @safe_execution
   public async getMetadata(track: string) {
     const [uri, type] = this.validateUri(track)
-    console.log(uri, type, track)
 
     if (uri && type === "track") {
       const metadata = await _librespotModule.get_metadata_spirc.call(

@@ -25,6 +25,9 @@ interface LibrespotModule {
     autoPlay: boolean,
     start_pos: number
   ) => Promise<void>
+  get_metadata: (
+    trackUri: string
+  ) => Promise<import("../src/types").CanvazResponse>
 
   // Spirc player
   create_player_spirc: (

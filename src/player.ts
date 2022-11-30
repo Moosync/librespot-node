@@ -115,4 +115,18 @@ export class SpotifyPlayer extends GenericPlayer {
 
     return res
   }
+
+  @safe_execution
+  public async getMetadata(track: string) {
+    const [uri, type] = this.validateUri(track)
+
+    if (uri && type === "track") {
+      const metadata = await _librespotModule.get_metadata.call(
+        this.playerInstance,
+        uri
+      )
+
+      return metadata
+    }
+  }
 }
