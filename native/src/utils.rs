@@ -14,8 +14,57 @@ use librespot::{
 use neon::{
     prelude::{Context, FunctionContext, Handle, Object},
     result::Throw,
-    types::{JsBoolean, JsNumber, JsObject, JsString, JsValue, Value},
+    types::{JsArray, JsBoolean, JsNumber, JsObject, JsString, JsValue, Value},
 };
+
+use crate::canvaz::EntityCanvazResponse;
+
+pub fn create_js_obj_from_canvas<'a, C>(
+    mut cx: C,
+    data: EntityCanvazResponse,
+) -> (Handle<'a, JsObject>, C)
+where
+    C: Context<'a>,
+{
+    let canvas_arr = cx.empty_array();
+
+    for (i, c) in data.canvases.iter().enumerate() {
+        let mut artist = StructToObj::new(cx);
+        artist.add_string("uri", c.artist.uri.clone());
+        artist.add_string("name", c.artist.name.clone());
+        artist.add_string("avatar", c.artist.avatar.clone());
+
+        let artist_obj = artist.finalize();
+
+        cx = artist.context;
+
+        let mut inner = StructToObj::new(cx);
+        inner.add_string("id", c.id.clone());
+        inner.add_string("url", c.url.clone());
+        inner.add_string("file_id", c.file_id.clone());
+        inner.add_string("entity_uri", c.entity_uri.clone());
+        inner.add_bool("explicit", c.explicit);
+        inner.add_string("uploaded_by", c.uploaded_by.clone());
+        inner.add_string("etag", c.etag.clone());
+        inner.add_string("canvas_uri", c.canvas_uri.clone());
+        inner.add_string("storylines_id", c.storylines_id.clone());
+        inner.add_number("type_", c.type_.value() as f64);
+
+        inner.add_obj("artist", artist_obj);
+
+        let inner_obj = inner.finalize();
+        cx = inner.context;
+
+        canvas_arr.set(&mut cx, i as u32, inner_obj).unwrap();
+    }
+
+    let mut obj = StructToObj::new(cx);
+    obj.add_array("canvases", canvas_arr);
+    obj.add_number("ttl_in_seconds", data.ttl_in_seconds as f64);
+
+    let js_obj = obj.finalize();
+    (js_obj, obj.context)
+}
 
 pub fn create_js_obj_from_event<'a, C>(cx: C, event: PlayerEvent) -> (Handle<'a, JsObject>, C)
 where
@@ -147,8 +196,7 @@ where
     };
 
     let js_obj = obj.finalize();
-    let ctx = obj.context;
-    return (js_obj, ctx);
+    return (js_obj, obj.context);
 }
 
 pub struct StructToObj<'a, C: Context<'a>> {
@@ -200,6 +248,12 @@ impl<'a, C: Context<'a>> StructToObj<'a, C> {
         return self;
     }
 
+    fn add_number(&mut self, field_name: &str, field_value: f64) -> &mut Self {
+        let val = self.context.number(field_value).as_value(&mut self.context);
+        self.write_to_obj(field_name, val);
+        return self;
+    }
+
     fn add_u64(&mut self, field_name: &str, field_value: u64) -> &mut Self {
         let val = self
             .context
@@ -214,6 +268,18 @@ impl<'a, C: Context<'a>> StructToObj<'a, C> {
             .context
             .number(field_value as f64)
             .as_value(&mut self.context);
+        self.write_to_obj(field_name, val);
+        return self;
+    }
+
+    fn add_array(&mut self, field_name: &str, field_value: Handle<JsArray>) -> &mut Self {
+        let val = field_value.as_value(&mut self.context);
+        self.write_to_obj(field_name, val);
+        return self;
+    }
+
+    fn add_obj(&mut self, field_name: &str, field_value: Handle<JsObject>) -> &mut Self {
+        let val = field_value.as_value(&mut self.context);
         self.write_to_obj(field_name, val);
         return self;
     }

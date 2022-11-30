@@ -1,5 +1,4 @@
-// TODO: Use unwrap_or_... instead of unwraps
-
+use canvaz::{entity_canvaz_request::Entity, EntityCanvazRequest};
 use constants::GLOBAL_JS_CALLBACK_METHOD;
 use futures::executor::block_on;
 use js_player::JsPlayerWrapper;
@@ -13,20 +12,26 @@ use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
     result::{JsResult, NeonResult},
     types::{
-        Deferred, JsBoolean, JsBox, JsFunction, JsNumber, JsObject, JsPromise, JsString,
+        Deferred, JsBoolean, JsBox, JsError, JsFunction, JsNumber, JsObject, JsPromise, JsString,
         JsUndefined, JsValue, Value,
     },
 };
+use protobuf::Message;
+use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use utils::{
-    get_connect_config_from_obj, get_credentials_from_obj, get_player_config_from_obj, token_to_obj,
+    create_js_obj_from_canvas, get_connect_config_from_obj, get_credentials_from_obj,
+    get_player_config_from_obj, token_to_obj,
 };
 
+mod canvaz;
 mod constants;
 mod js_player;
 mod js_player_spirc;
 mod player;
 mod utils;
 use env_logger;
+
+use crate::canvaz::EntityCanvazResponse;
 
 trait A {}
 
@@ -163,6 +168,94 @@ fn set_volume_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
         deferred.settle_with(channel, move |mut cx| {
             res.or_else(|err| cx.throw_error(err.to_string()))?;
             Ok(cx.undefined())
+        });
+    });
+
+    Ok(promise)
+}
+
+fn get_metadata(mut cx: FunctionContext) -> JsResult<JsPromise> {
+    let track_uri = cx.argument::<JsString>(0)?.value(&mut cx);
+    let promise = send_to_spirc(cx, move |_, session, channel, deferred| {
+        deferred.settle_with(channel, move |mut cx| {
+            let session_clone = session.clone();
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .enable_io()
+                .enable_time()
+                .build()
+                .unwrap();
+
+            let canvaz_data: Result<EntityCanvazResponse, Handle<JsError>> =
+                runtime.block_on(async {
+                    let spclient = session_clone.spclient();
+
+                    let mut req = EntityCanvazRequest::new();
+                    let mut entity = Entity::new();
+                    entity.entity_uri = track_uri.clone();
+                    req.entities.push(entity.clone());
+
+                    println!("{}", protobuf::text_format::print_to_string(&req));
+
+                    let url = format!(
+                        "{}/canvaz-cache/v0/canvases",
+                        spclient.base_url().await.unwrap()
+                    );
+                    let token = session
+                        .token_provider()
+                        .get_token("playlist-read")
+                        .await
+                        .or_else(|err| {
+                            Err(cx
+                                .error(format!("Failed to get access_token {}", err.to_string()))
+                                .unwrap())
+                        })?
+                        .access_token;
+
+                    let body = req.write_to_bytes().or_else(|err| {
+                        Err(cx
+                            .error(format!("Failed write body to bytes {}", err.to_string()))
+                            .unwrap())
+                    })?;
+
+                    let resp = reqwest::Client::builder()
+                        .build()
+                        .or_else(|err| {
+                            Err(cx.error(format!("Failed to build request builder {}", err)))
+                        })
+                        .unwrap()
+                        .post(url)
+                        .header(CONTENT_TYPE, "application/x-protobuf")
+                        .bearer_auth(token)
+                        .header(CONTENT_LENGTH, body.len())
+                        .body(body)
+                        .send()
+                        .await
+                        .or_else(|err| {
+                            Err(cx
+                                .error(format!("Failed to send request {}", err.to_string()))
+                                .unwrap())
+                        })?;
+
+                    let bytes = resp.bytes().await.or_else(|err| {
+                        Err(cx
+                            .error(format!("Failed to get response body {}", err.to_string()))
+                            .unwrap())
+                    })?;
+
+                    let data = EntityCanvazResponse::parse_from_tokio_bytes(&bytes.clone())
+                        .or_else(|err| {
+                            Err(cx
+                                .error(format!("Failed to parse request {}", err.to_string()))
+                                .unwrap())
+                        })?;
+
+                    Ok(data)
+                });
+
+            let d = canvaz_data.or_else(|err| cx.throw(err))?;
+
+            let (parsed_obj, _) = create_js_obj_from_canvas(cx, d);
+            Ok(parsed_obj)
         });
     });
 
@@ -355,6 +448,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("close_player_spirc", close_player_spirc)?;
     cx.export_function("get_device_id_spirc", get_device_id_spirc)?;
     cx.export_function("get_token_spirc", get_token_spirc)?;
+    cx.export_function("get_metadata_spirc", get_metadata)?;
 
     cx.export_function("create_player", create_player)?;
     cx.export_function("play", play)?;

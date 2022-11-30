@@ -11,11 +11,12 @@
     "declaration": true,
     "experimentalDecorators": true,
     "typeRoots": [
-      "types/index.d.ts"
+      "types/index.d.ts",
+      "node_modules/@types/"
     ]
   },
   "include": [
-    "src/**/*",
+    "src/**/*.ts",
   ],
   "files": [
     "types/index.d.ts"

@@ -1,6 +1,5 @@
 const path = require('path');
-
-const mode = 'development'
+const mode = 'production'
 
 module.exports = {
   entry: './src/index.ts',
@@ -15,18 +14,12 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.js'],
   },
+  externals: [{ 'librespot': './build/librespot.node' }],
   module: {
     rules: [
       {
         use: 'ts-loader',
         test: /\.ts?$/
-      },
-      {
-        loader: 'node-loader',
-        test: /\.node?$/,
-        options: {
-          name: '[path]librespot.[ext]'
-        }
       }
     ]
   },

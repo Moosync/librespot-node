@@ -1,7 +1,8 @@
 import { ConstructorConfig } from "./types"
 import { TokenScope } from "./types"
-import { request, DEFAULT_SCOPES, _librespotModule } from "./utils"
+import { request, DEFAULT_SCOPES, _librespotModule, TRACK_REGEX } from "./utils"
 import { GenericPlayer, safe_execution } from "./genericPlayer"
+
 export class SpotifyPlayerSpirc extends GenericPlayer {
   protected onPlayerInitialized() {
     this.device_id = _librespotModule.get_device_id_spirc.call(
@@ -57,6 +58,25 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
     return (this._volume / 65535) * 100
   }
 
+  private validateUri(val: string): [string | undefined, string | undefined] {
+    const match = val.match(TRACK_REGEX)
+
+    if (match?.groups?.type) {
+      if (match.groups.urlType?.startsWith("https")) {
+        const parsedUrl = new URL(val)
+        return [
+          `spotify:${match.groups.type}:${parsedUrl.pathname
+            .split("/")
+            .at(-1)}`,
+          match.groups.type,
+        ]
+      }
+      return [val, match.groups.type]
+    }
+
+    return [undefined, undefined]
+  }
+
   @safe_execution
   public async load(trackURIs: string | string[]) {
     const token = (await this.getToken("user-modify-playback-state"))
@@ -76,34 +96,26 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
       body: {},
     }
 
-    const regex = new RegExp(
-      /^(?<urlType>(?:spotify:|(?:https?:\/\/(?:open|play)\.spotify\.com\/)))(?:embed)?\/?(?<type>album|track|playlist|artist)(?::|\/)((?:[0-9a-zA-Z]){22})/
-    )
-
     if (typeof trackURIs === "string") {
       trackURIs = [trackURIs]
     }
 
     for (let trackURI of trackURIs) {
-      const match = trackURI.match(regex)
+      const [uri, type] = this.validateUri(trackURI)
+      const body: Record<string, string[] | string> = {}
 
-      if (match?.groups?.type) {
-        if (match.groups.urlType?.startsWith("https")) {
-          const parsedUrl = new URL(trackURI)
-          trackURI = `spotify:${match.groups.type}:${parsedUrl.pathname
-            .split("/")
-            .at(-1)}`
-        }
-
-        switch (match.groups.type) {
+      if (uri) {
+        switch (type) {
           case "track":
-            options.body!["uris"] = (options.body!["uris"] as string[]) ?? []
-            ;(options.body!["uris"]! as string[]).push(trackURI)
+            body["uris"] = (body["uris"] as string[]) ?? []
+            ;(body["uris"]! as string[]).push(uri)
             break
           default:
-            options.body!["context_uri"] = trackURI
+            body["context_uri"] = uri
             break
         }
+
+        options.body = body
       }
     }
 
@@ -136,5 +148,20 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
     }
 
     return res
+  }
+
+  @safe_execution
+  public async getMetadata(track: string) {
+    const [uri, type] = this.validateUri(track)
+    console.log(uri, type, track)
+
+    if (uri && type === "track") {
+      const metadata = await _librespotModule.get_metadata_spirc.call(
+        this.playerInstance,
+        uri
+      )
+
+      return metadata
+    }
   }
 }

@@ -1,6 +1,6 @@
 interface FetchConfig {
   method: "GET" | "POST" | "PUT"
-  body?: Record<string, unknown>
+  body?: Record<string, unknown> | string | Uint8Array
   headers?: Record<string, string | string[] | number>
   search?: Record<string, string>
   auth?: string
@@ -39,6 +39,9 @@ interface LibrespotModule {
   close_player_spirc: () => Promise<void>
   get_device_id_spirc: () => string
   get_token_spirc: (scopes: string) => Promise<Token | undefined>
+  get_metadata_spirc: (
+    trackUri: string
+  ) => Promise<import("../src/types").CanvazResponse>
 }
 
 interface FullConstructorConfig {

@@ -215,3 +215,28 @@ export type Token = {
   expiry_from_epoch: number
   scopes: TokenScope[]
 }
+
+export interface CanvazResponse {
+  canvases: Canvaz[]
+  ttl_in_seconds: number
+}
+
+export interface Canvaz {
+  id: string
+  url: string
+  file_id: string
+  entity_uri: string
+  explicit: boolean
+  uploaded_by: string
+  etag: string
+  canvas_uri: string
+  storylines_id: string
+  type_: number
+  artist: Artist
+}
+
+export interface Artist {
+  uri: string
+  name: string
+  avatar: string
+}

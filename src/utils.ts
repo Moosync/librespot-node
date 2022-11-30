@@ -1,6 +1,12 @@
-import bindings from "bindings"
 import https, { RequestOptions } from "https"
 import { TokenScope } from "./types"
+import { load } from "protobufjs"
+import { readdirSync } from "fs"
+import path from "path"
+
+export const TRACK_REGEX = new RegExp(
+  /^(?<urlType>(?:spotify:|(?:https?:\/\/(?:open|play)\.spotify\.com\/)))(?:embed)?\/?(?<type>album|track|playlist|artist)(?::|\/)((?:[0-9a-zA-Z]){22})/
+)
 
 export function request<T>(url: string, config: FetchConfig): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -10,11 +16,16 @@ export function request<T>(url: string, config: FetchConfig): Promise<T> {
       config.headers = {}
     }
 
-    config.headers["Content-Type"] = "application/json"
+    if (!config.headers["Content-Type"]) {
+      config.headers["Content-Type"] = "application/json"
+    }
+
     if (config.body) {
-      config.headers["Content-Length"] = Buffer.byteLength(
-        JSON.stringify(config.body)
-      )
+      const bodyString =
+        config.body instanceof Uint8Array
+          ? config.body
+          : JSON.stringify(config.body)
+      config.headers["Content-Length"] = Buffer.byteLength(bodyString)
     }
 
     if (config.auth) {
@@ -51,7 +62,11 @@ export function request<T>(url: string, config: FetchConfig): Promise<T> {
 
     req.on("error", reject)
     if (config.body) {
-      req.write(JSON.stringify(config.body))
+      const bodyString =
+        config.body instanceof Uint8Array
+          ? config.body
+          : JSON.stringify(config.body)
+      req.write(bodyString)
     }
     req.end()
   })
@@ -66,4 +81,4 @@ export const DEFAULT_SCOPES: TokenScope[] = [
   "user-modify-playback-state",
 ]
 
-export const _librespotModule: LibrespotModule = require("../build/librespot.node")
+export const _librespotModule: LibrespotModule = require("librespot")
