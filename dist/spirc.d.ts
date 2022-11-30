@@ -11,7 +11,6 @@ export declare class SpotifyPlayerSpirc extends GenericPlayer {
     getCurrentPosition(): number;
     setVolume(volume: number, raw?: boolean): Promise<void>;
     getVolume(raw?: boolean): number;
-    private validateUri;
     load(trackURIs: string | string[]): Promise<void>;
     getToken(...scopes: TokenScope[]): Promise<any>;
     getMetadata(track: string): Promise<import("./types").CanvazResponse | undefined>;

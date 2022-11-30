@@ -27,6 +27,7 @@ export declare abstract class GenericPlayer {
     once<T extends PlayerEventTypes>(event: T, callback: (event: PlayerEvent<T>) => void): EventEmitter;
     removeAllListeners(): void;
     getDeviceId(): string;
+    protected validateUri(val: string): [string | undefined, string | undefined];
     abstract setVolume(volume: number, raw?: boolean): Promise<void>;
     abstract load(trackURIs: string | string[], autoPlay?: boolean, startPosition?: number): Promise<void>;
     abstract getToken(...scopes: TokenScope[]): Promise<Token | undefined>;

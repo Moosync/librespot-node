@@ -11,4 +11,5 @@ export declare class SpotifyPlayer extends GenericPlayer {
     getVolume(raw?: boolean): number;
     load(trackURIs: string | string[], autoPlay?: boolean, startPosition?: number): Promise<void>;
     getToken(...scopes: TokenScope[]): Promise<any>;
+    getMetadata(track: string): Promise<import("./types").CanvazResponse | undefined>;
 }
