@@ -25,7 +25,7 @@ interface LibrespotModule {
     autoPlay: boolean,
     start_pos: number
   ) => Promise<void>
-  get_metadata: (
+  get_canvas: (
     trackUri: string
   ) => Promise<import("../src/types").CanvazResponse>
 
@@ -42,7 +42,7 @@ interface LibrespotModule {
   close_player_spirc: () => Promise<void>
   get_device_id_spirc: () => string
   get_token_spirc: (scopes: string) => Promise<Token | undefined>
-  get_metadata_spirc: (
+  get_canvas_spirc: (
     trackUri: string
   ) => Promise<import("../src/types").CanvazResponse>
 }

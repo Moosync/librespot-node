@@ -15,7 +15,6 @@ use neon::{
         JsUndefined, JsValue, Value,
     },
 };
-use player::get_canvas;
 
 use utils::{
     create_js_obj_from_canvas, get_connect_config_from_obj, get_credentials_from_obj,
@@ -169,11 +168,12 @@ fn set_volume_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
     Ok(promise)
 }
 
-fn get_metadata_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
+fn get_canvas_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let track_uri = cx.argument::<JsString>(0)?.value(&mut cx);
     let promise = send_to_spirc(cx, move |_, session, channel, deferred| {
         deferred.settle_with(channel, move |mut cx| {
-            let d = get_canvas(&mut cx, track_uri, session.clone()).or_else(|err| cx.throw(err))?;
+            let d = player::get_canvas(&mut cx, track_uri, session.clone())
+                .or_else(|err| cx.throw(err))?;
 
             let (parsed_obj, _) = create_js_obj_from_canvas(cx, d);
             Ok(parsed_obj)
@@ -183,11 +183,12 @@ fn get_metadata_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
     Ok(promise)
 }
 
-fn get_metadata(mut cx: FunctionContext) -> JsResult<JsPromise> {
+fn get_canvas(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let track_uri = cx.argument::<JsString>(0)?.value(&mut cx);
     let promise = send_to_player(cx, move |_, _, session, channel, deferred| {
         deferred.settle_with(channel, move |mut cx| {
-            let d = get_canvas(&mut cx, track_uri, session.clone()).or_else(|err| cx.throw(err))?;
+            let d = player::get_canvas(&mut cx, track_uri, session.clone())
+                .or_else(|err| cx.throw(err))?;
 
             let (parsed_obj, _) = create_js_obj_from_canvas(cx, d);
             Ok(parsed_obj)
@@ -383,7 +384,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("close_player_spirc", close_player_spirc)?;
     cx.export_function("get_device_id_spirc", get_device_id_spirc)?;
     cx.export_function("get_token_spirc", get_token_spirc)?;
-    cx.export_function("get_metadata_spirc", get_metadata_spirc)?;
+    cx.export_function("get_canvas_spirc", get_canvas_spirc)?;
 
     cx.export_function("create_player", create_player)?;
     cx.export_function("play", play)?;
@@ -394,7 +395,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("get_device_id", get_device_id)?;
     cx.export_function("get_token", get_token)?;
     cx.export_function("load_track", load_track)?;
-    cx.export_function("get_metadata", get_metadata)?;
+    cx.export_function("get_canvas", get_canvas)?;
 
     Ok(())
 }

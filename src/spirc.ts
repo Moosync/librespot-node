@@ -136,7 +136,7 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
     const [uri, type] = this.validateUri(track)
 
     if (uri && type === "track") {
-      const metadata = await _librespotModule.get_metadata_spirc.call(
+      const metadata = await _librespotModule.get_canvas_spirc.call(
         this.playerInstance,
         uri
       )
