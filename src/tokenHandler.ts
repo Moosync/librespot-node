@@ -6,9 +6,11 @@ import { Token, TokenScope } from "./types"
 export class TokenHandler {
   private tokenMap: Token[] = []
   private filePath: PathLike
+  private readFilePromise: Promise<void>
 
   constructor(filePath: string) {
     this.filePath = filePath
+    this.readFilePromise = this.readFile()
   }
 
   private async dumpFile() {
@@ -28,13 +30,13 @@ export class TokenHandler {
   }
 
   public async addToken(token: Token) {
-    await this.readFile()
+    await this.readFilePromise
     this.tokenMap.push(token)
     await this.dumpFile()
   }
 
   public async getToken(scopes: TokenScope[]) {
-    await this.readFile()
+    await this.readFilePromise
     for (const token of this.tokenMap) {
       // Check if required scopes are already cached
       if (scopes.some((val) => token.scopes.includes(val))) {
