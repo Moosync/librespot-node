@@ -121,7 +121,7 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
 
     if (res) {
       res.scopes = (res.scopes as unknown as string).split(",") as TokenScope[]
-      res.expiry_from_epoch = Date.now() + res.expires_in * 1000
+      res.expiry_from_epoch = Date.now() + res.expires_in
 
       if (this.saveToken) {
         await this.tokenHandler.addToken(res)
