@@ -1,8 +1,5 @@
 import https, { RequestOptions } from "https"
 import { TokenScope } from "./types"
-import { load } from "protobufjs"
-import { readdirSync } from "fs"
-import path from "path"
 
 export const TRACK_REGEX = new RegExp(
   /^(?<urlType>(?:spotify:|(?:https?:\/\/(?:open|play)\.spotify\.com\/)))(?:embed)?\/?(?<type>album|track|playlist|artist)(?::|\/)((?:[0-9a-zA-Z]){22})/
