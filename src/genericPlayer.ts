@@ -33,7 +33,6 @@ export abstract class GenericPlayer {
 
   protected playerInstance: PlayerNativeObject | undefined
 
-  protected saveToken: boolean
   protected _volume = 0
 
   protected device_id!: string
@@ -86,9 +85,14 @@ export abstract class GenericPlayer {
         config.normalizationConfig?.normalizationThreshold ?? 0,
     }
 
-    config.save_tokens = config.save_tokens ?? false
+    config.cache = {
+      audio_location: config.cache?.audio_location,
+      credentials_location: config.cache?.credentials_location,
+      volume_location: config.cache?.audio_location,
+      size_limiter: config.cache?.size_limiter,
+    }
+
     config.pos_update_interval = config.pos_update_interval ?? 500
-    config.cache_path = path.join(config.cache_path ?? __dirname, "token_dump")
 
     return config as FullConstructorConfig
   }
@@ -100,7 +104,9 @@ export abstract class GenericPlayer {
       | "create_player_spirc" = "create_player"
   ) {
     let validatedConfig = this.validateConfig(config)
-    this.tokenHandler = new TokenHandler(validatedConfig.cache_path)
+    this.tokenHandler = new TokenHandler(
+      validatedConfig.cache?.credentials_location
+    )
     this._positionHolder = new PositionHolder(config.pos_update_interval)
 
     _librespotModule[playerConstructMethod](
@@ -130,7 +136,6 @@ export abstract class GenericPlayer {
         position_ms,
       })
     }
-    this.saveToken = config.save_tokens ?? false
   }
 
   private player_event_callback(event: PlayerEvent) {

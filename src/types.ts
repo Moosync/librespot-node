@@ -32,10 +32,16 @@ export interface ConnectConfig {
   hasVolumeControl: boolean
 }
 
+export interface CacheConfig {
+  credentials_location?: string
+  volume_location?: string
+  audio_location?: string
+  size_limiter?: number
+}
+
 export interface ConstructorConfig {
   auth: Partial<AuthDetails>
-  save_tokens?: boolean
-  cache_path?: string
+  cache?: CacheConfig
   pos_update_interval?: number
   backend?: string
   gapless?: boolean

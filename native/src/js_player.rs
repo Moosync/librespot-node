@@ -5,7 +5,7 @@ use std::{
 
 use librespot::{
     core::Error,
-    core::Session,
+    core::{cache::Cache, Session},
     discovery::Credentials,
     playback::{
         config::PlayerConfig,
@@ -46,6 +46,7 @@ impl JsPlayerWrapper {
         cx: &mut C,
         credentials: Credentials,
         player_config: PlayerConfig,
+        cache_config: Cache,
         backend: String,
     ) -> Result<Self, Error>
     where
@@ -70,7 +71,7 @@ impl JsPlayerWrapper {
                 .unwrap();
 
             runtime.block_on(async {
-                let session = create_session().clone();
+                let session = create_session(cache_config).clone();
                 let conn_res = session.connect(credentials, false).await;
                 if conn_res.is_err() {
                     player_creation_tx

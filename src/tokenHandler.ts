@@ -2,31 +2,34 @@ import assert from "assert"
 import { PathLike } from "fs"
 import { writeFile, readFile } from "fs/promises"
 import { Token, TokenScope } from "./types"
+import path from "path"
 
 export class TokenHandler {
   private tokenMap: Token[] = []
-  private filePath: PathLike
+  private filePath?: PathLike
   private readFilePromise: Promise<void>
 
-  constructor(filePath: string) {
-    this.filePath = filePath
+  constructor(filePath?: string) {
+    if (filePath) this.filePath = path.join(filePath, "tokens.json")
     this.readFilePromise = this.readFile()
   }
 
   private async dumpFile() {
-    await writeFile(this.filePath, JSON.stringify(this.tokenMap))
+    if (this.filePath)
+      await writeFile(this.filePath, JSON.stringify(this.tokenMap))
   }
 
   private async readFile() {
-    try {
-      this.tokenMap = JSON.parse(
-        await readFile(this.filePath, { encoding: "utf-8" })
-      )
-      assert(Array.isArray(this.tokenMap))
-    } catch (e) {
-      console.warn("Failed to parse token store, creating new")
-      this.tokenMap = []
-    }
+    if (this.filePath)
+      try {
+        this.tokenMap = JSON.parse(
+          await readFile(this.filePath, { encoding: "utf-8" })
+        )
+        assert(Array.isArray(this.tokenMap))
+      } catch (e) {
+        console.warn("Failed to parse token store, creating new")
+        this.tokenMap = []
+      }
   }
 
   public async addToken(token: Token) {

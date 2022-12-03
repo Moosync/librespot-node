@@ -6,7 +6,7 @@ use std::{
 use librespot::{
     connect::{config::ConnectConfig, spirc::Spirc},
     core::Error,
-    core::Session,
+    core::{cache::Cache, Session},
     discovery::Credentials,
     playback::{config::PlayerConfig, player::PlayerEventChannel},
 };
@@ -43,6 +43,7 @@ impl JsPlayerSpircWrapper {
         credentials: Credentials,
         player_config: PlayerConfig,
         connect_config: ConnectConfig,
+        cache_config: Cache,
         backend: String,
     ) -> Result<Self, Error>
     where
@@ -67,7 +68,8 @@ impl JsPlayerSpircWrapper {
                 .unwrap();
 
             runtime.block_on(async {
-                let session = create_session().clone();
+                println!("Creating session");
+                let session = create_session(cache_config).clone();
 
                 let device_id = session.device_id().to_string();
 

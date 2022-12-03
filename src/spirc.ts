@@ -2,6 +2,7 @@ import { ConstructorConfig } from "./types"
 import { TokenScope } from "./types"
 import { request, DEFAULT_SCOPES, _librespotModule, TRACK_REGEX } from "./utils"
 import { GenericPlayer, safe_execution } from "./genericPlayer"
+import path from "path"
 
 export class SpotifyPlayerSpirc extends GenericPlayer {
   protected onPlayerInitialized() {
@@ -107,11 +108,9 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
   public async getToken(...scopes: TokenScope[]) {
     scopes = scopes && scopes.length > 0 ? scopes : DEFAULT_SCOPES
 
-    if (this.saveToken) {
-      const cachedToken = await this.tokenHandler.getToken(scopes)
-      if (cachedToken) {
-        return cachedToken
-      }
+    const cachedToken = await this.tokenHandler.getToken(scopes)
+    if (cachedToken) {
+      return cachedToken
     }
 
     const res = await _librespotModule.get_token_spirc.call(
@@ -123,9 +122,7 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
       res.scopes = (res.scopes as unknown as string).split(",") as TokenScope[]
       res.expiry_from_epoch = Date.now() + res.expires_in
 
-      if (this.saveToken) {
-        await this.tokenHandler.addToken(res)
-      }
+      await this.tokenHandler.addToken(res)
     }
 
     return res

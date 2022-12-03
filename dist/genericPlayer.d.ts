@@ -10,7 +10,6 @@ export declare abstract class GenericPlayer {
     protected _positionHolder: PositionHolder;
     eventEmitter: EventEmitter;
     protected playerInstance: PlayerNativeObject | undefined;
-    protected saveToken: boolean;
     protected _volume: number;
     protected device_id: string;
     protected _isInitialized: boolean;

@@ -1,6 +1,7 @@
 use futures_util::StreamExt;
 
 use librespot;
+use librespot::core::cache::Cache;
 use librespot::core::{authentication::Credentials, config::SessionConfig, session::Session};
 use librespot::discovery::DeviceType;
 use librespot::playback::audio_backend::SinkBuilder;
@@ -42,9 +43,9 @@ pub fn new_player(
     return (p, mixer);
 }
 
-pub fn create_session() -> Session {
+pub fn create_session(cache_config: Cache) -> Session {
     let session_config = SessionConfig::default();
-    let session = Session::new(session_config, None);
+    let session = Session::new(session_config, Some(cache_config));
 
     return session;
 }

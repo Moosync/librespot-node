@@ -17,8 +17,8 @@ use neon::{
 };
 
 use utils::{
-    create_js_obj_from_canvas, get_connect_config_from_obj, get_credentials_from_obj,
-    get_player_config_from_obj, token_to_obj,
+    create_js_obj_from_canvas, get_cache_config_from_obj, get_connect_config_from_obj,
+    get_credentials_from_obj, get_player_config_from_obj, token_to_obj,
 };
 
 mod canvaz;
@@ -96,6 +96,8 @@ fn create_player_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let credentials = get_credentials_from_obj(&mut cx, config)?;
     let player_config = get_player_config_from_obj(&mut cx, config)?;
     let connect_config = get_connect_config_from_obj(&mut cx, config)?;
+    let cache_config = get_cache_config_from_obj(&mut cx, config)?;
+
     let backend = config
         .get::<JsString, _, _>(&mut cx, "backend")?
         .value(&mut cx);
@@ -106,8 +108,14 @@ fn create_player_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
         .unwrap();
 
     deferred.settle_with(&channel, move |mut cx| {
-        let js_player =
-            JsPlayerSpircWrapper::new(&mut cx, credentials, player_config, connect_config, backend);
+        let js_player = JsPlayerSpircWrapper::new(
+            &mut cx,
+            credentials,
+            player_config,
+            connect_config,
+            cache_config,
+            backend,
+        );
         match js_player {
             Ok(_) => Ok(cx.boxed(js_player.unwrap())),
             Err(e) => cx.throw_error(format!("Failed to create player: {}", e.to_string())),
@@ -248,6 +256,7 @@ fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let backend = config
         .get::<JsString, _, _>(&mut cx, "backend")?
         .value(&mut cx);
+    let cache_config = get_cache_config_from_obj(&mut cx, config)?;
 
     let callback = cx.argument::<JsFunction>(1)?;
 
@@ -260,7 +269,8 @@ fn create_player(mut cx: FunctionContext) -> JsResult<JsPromise> {
         .unwrap();
 
     deferred.settle_with(&channel, move |mut cx| {
-        let js_player = JsPlayerWrapper::new(&mut cx, credentials, player_config, backend);
+        let js_player =
+            JsPlayerWrapper::new(&mut cx, credentials, player_config, cache_config, backend);
         match js_player {
             Ok(_) => Ok(cx.boxed(js_player.unwrap())),
             Err(e) => cx.throw_error(format!("Failed to create player: {}", e.to_string())),

@@ -1,8 +1,8 @@
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
 use librespot::{
     connect::config::ConnectConfig,
-    core::{spotify_id::SpotifyId, token::Token},
+    core::{cache::Cache, spotify_id::SpotifyId, token::Token},
     discovery::{Credentials, DeviceType},
     playback::{
         config::{Bitrate, NormalisationMethod, NormalisationType, PlayerConfig},
@@ -403,4 +403,46 @@ pub fn get_connect_config_from_obj(
             .get::<JsBoolean, _, _>(cx, "hasVolumeControl")?
             .value(cx),
     })
+}
+
+fn get_path_from_str(
+    cx: &mut FunctionContext,
+    obj: Handle<JsObject>,
+    key: &str,
+) -> Result<Option<PathBuf>, Throw> {
+    let str_js = obj.get_value(cx, key)?;
+    if str_js.is_a::<JsString, _>(cx) {
+        let str = str_js.downcast_or_throw::<JsString, _>(cx)?.value(cx);
+        return Ok(Some(
+            PathBuf::from_str(str.as_str())
+                .or_else(|err| Err(cx.throw_error(err.to_string()).unwrap()))?,
+        ));
+    }
+    Ok(None)
+}
+
+pub fn get_cache_config_from_obj(
+    cx: &mut FunctionContext,
+    obj: Handle<JsObject>,
+) -> Result<Cache, Throw> {
+    let cache_config = obj
+        .get::<JsObject, _, _>(cx, "cache")
+        .or_else(|err| Err(cx.throw_error(err.to_string()).unwrap()))?;
+
+    let size_limiter_js = cache_config.get_value(cx, "size_limiter")?;
+    let mut size_limiter: Option<u64> = None;
+    if size_limiter_js.is_a::<JsNumber, _>(cx) {
+        size_limiter = Some(
+            size_limiter_js
+                .downcast_or_throw::<JsNumber, _>(cx)?
+                .value(cx) as u64,
+        );
+    }
+    Ok(Cache::new(
+        get_path_from_str(cx, cache_config, "credentials_location")?,
+        get_path_from_str(cx, cache_config, "volume_location")?,
+        get_path_from_str(cx, cache_config, "audio_location")?,
+        size_limiter,
+    )
+    .or_else(|err| Err(cx.throw_error(err.to_string()).unwrap()))?)
 }

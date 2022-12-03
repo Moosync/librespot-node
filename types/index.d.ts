@@ -49,8 +49,6 @@ interface LibrespotModule {
 
 interface FullConstructorConfig {
   auth: AuthDetails
-  save_tokens: boolean
-  cache_path: string
   pos_update_interval: number
   backend: string
   gapless: boolean
@@ -58,6 +56,7 @@ interface FullConstructorConfig {
   passThrough: boolean
   normalizationConfig: NormalizationConfig
   connectConfig: ConnectConfig
+  cache: CacheConfig
 }
 
 type PlayerNativeObject = never
