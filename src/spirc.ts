@@ -105,6 +105,35 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
   }
 
   @safe_execution
+  public async addToQueue(trackURI: string) {
+    const token = (await this.getToken("user-modify-playback-state"))
+      ?.access_token
+    if (!token) {
+      throw Error("Failed to get a valid access token")
+    }
+
+    console.debug("using existing token", token)
+
+    const options: FetchConfig = {
+      method: "POST",
+      search: {
+        device_id: this.device_id,
+      },
+      auth: token,
+    }
+
+    const [uri, type] = this.validateUri(trackURI)
+
+    if (uri && type === "track") {
+      options.search!["uri"] = uri
+    } else {
+      throw new Error("URI must be of a track")
+    }
+
+    await request<void>("https://api.spotify.com/v1/me/player/queue", options)
+  }
+
+  @safe_execution
   public async getToken(...scopes: TokenScope[]) {
     scopes = scopes && scopes.length > 0 ? scopes : DEFAULT_SCOPES
 
