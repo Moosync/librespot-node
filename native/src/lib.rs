@@ -191,6 +191,19 @@ fn get_canvas_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
     Ok(promise)
 }
 
+fn get_lyrics_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
+    let track_uri = cx.argument::<JsString>(0)?.value(&mut cx);
+    let promise = send_to_spirc(cx, move |_, session, channel, deferred| {
+        deferred.settle_with(channel, move |mut cx| {
+            let resp =
+                player::get_lyrics(&mut cx, track_uri, session).or_else(|err| cx.throw(err))?;
+            Ok(cx.string(resp))
+        });
+    });
+
+    Ok(promise)
+}
+
 fn get_canvas(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let track_uri = cx.argument::<JsString>(0)?.value(&mut cx);
     let promise = send_to_player(cx, move |_, _, session, channel, deferred| {
@@ -200,6 +213,19 @@ fn get_canvas(mut cx: FunctionContext) -> JsResult<JsPromise> {
 
             let (parsed_obj, _) = create_js_obj_from_canvas(cx, d);
             Ok(parsed_obj)
+        });
+    });
+
+    Ok(promise)
+}
+
+fn get_lyrics(mut cx: FunctionContext) -> JsResult<JsPromise> {
+    let track_uri = cx.argument::<JsString>(0)?.value(&mut cx);
+    let promise = send_to_player(cx, move |_, _, session, channel, deferred| {
+        deferred.settle_with(channel, move |mut cx| {
+            let resp =
+                player::get_lyrics(&mut cx, track_uri, session).or_else(|err| cx.throw(err))?;
+            Ok(cx.string(resp))
         });
     });
 
@@ -395,6 +421,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("get_device_id_spirc", get_device_id_spirc)?;
     cx.export_function("get_token_spirc", get_token_spirc)?;
     cx.export_function("get_canvas_spirc", get_canvas_spirc)?;
+    cx.export_function("get_lyrics_spirc", get_lyrics_spirc)?;
 
     cx.export_function("create_player", create_player)?;
     cx.export_function("play", play)?;
@@ -406,6 +433,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("get_token", get_token)?;
     cx.export_function("load_track", load_track)?;
     cx.export_function("get_canvas", get_canvas)?;
+    cx.export_function("get_lyrics", get_lyrics)?;
 
     Ok(())
 }

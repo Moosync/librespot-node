@@ -28,6 +28,7 @@ interface LibrespotModule {
   get_canvas: (
     trackUri: string
   ) => Promise<import("../src/types").CanvazResponse>
+  get_lyrics: (trackUri: string) => Promise<string>
 
   // Spirc player
   create_player_spirc: (
@@ -45,6 +46,7 @@ interface LibrespotModule {
   get_canvas_spirc: (
     trackUri: string
   ) => Promise<import("../src/types").CanvazResponse>
+  get_lyrics_spirc: (trackUri: string) => Promise<string>
 }
 
 interface FullConstructorConfig {

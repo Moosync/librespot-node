@@ -2,7 +2,7 @@
 import EventEmitter from "events";
 import { TokenHandler } from "./tokenHandler";
 import { PositionHolder } from "./positionHolder";
-import { ConstructorConfig, Token } from "./types";
+import { ConstructorConfig, Token, CanvazResponse, LyricsResponse } from "./types";
 import { PlayerEvent, PlayerEventTypes, TokenScope } from "./types";
 export declare function safe_execution(_: unknown, propertyKey: string, descriptor: TypedPropertyDescriptor<any>): TypedPropertyDescriptor<any>;
 export declare abstract class GenericPlayer {
@@ -34,4 +34,6 @@ export declare abstract class GenericPlayer {
     abstract seek(posMs: number): Promise<void>;
     abstract close(): Promise<void>;
     abstract getCurrentPosition(): number;
+    abstract getCanvas(track: string): Promise<CanvazResponse | undefined>;
+    abstract getLyrics(track: string): Promise<LyricsResponse | undefined>;
 }

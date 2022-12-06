@@ -113,7 +113,7 @@ export class SpotifyPlayer extends GenericPlayer {
   }
 
   @safe_execution
-  public async getMetadata(track: string) {
+  public async getCanvas(track: string) {
     const [uri, type] = this.validateUri(track)
 
     if (uri && type === "track") {
@@ -123,6 +123,24 @@ export class SpotifyPlayer extends GenericPlayer {
       )
 
       return metadata
+    }
+  }
+
+  @safe_execution
+  public async getLyrics(track: string) {
+    const [uri, type] = this.validateUri(track)
+
+    if (uri && type === "track") {
+      const metadata = await _librespotModule.get_lyrics.call(
+        this.playerInstance,
+        uri
+      )
+
+      try {
+        return JSON.parse(metadata)
+      } catch {
+        return metadata
+      }
     }
   }
 }

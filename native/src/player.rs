@@ -2,8 +2,10 @@ use futures_util::StreamExt;
 
 use librespot;
 use librespot::core::cache::Cache;
+use librespot::core::SpotifyId;
 use librespot::core::{authentication::Credentials, config::SessionConfig, session::Session};
 use librespot::discovery::DeviceType;
+
 use librespot::playback::audio_backend::SinkBuilder;
 use librespot::playback::config::{PlayerConfig, VolumeCtrl};
 use librespot::playback::mixer::{Mixer, MixerConfig};
@@ -63,6 +65,37 @@ pub async fn start_discovery(client_id: String) -> Credentials {
         .unwrap();
 
     discovery.next().await.unwrap()
+}
+
+pub fn get_lyrics<'a, C>(
+    cx: &mut C,
+    track_uri: String,
+    session: Session,
+) -> Result<String, Handle<'a, JsError>>
+where
+    C: Context<'a>,
+{
+    let session_clone = session.clone();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .unwrap();
+
+    runtime.block_on(async {
+        let track_id_res = SpotifyId::from_uri(track_uri.as_str())
+            .or_else(|err| Err(cx.error(err.to_string()).unwrap()))?;
+
+        let resp = session_clone
+            .spclient()
+            .get_lyrics(&track_id_res)
+            .await
+            .or_else(|err| Err(cx.error(err.to_string()).unwrap()))?;
+
+        let str = String::from_utf8(resp.to_vec())
+            .or_else(|err| Err(cx.error(err.to_string()).unwrap()))?;
+        Ok(str)
+    })
 }
 
 pub fn get_canvas<'a, C>(

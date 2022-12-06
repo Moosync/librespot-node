@@ -1,8 +1,12 @@
 import EventEmitter from "events"
-import path from "path"
 import { TokenHandler } from "./tokenHandler"
 import { PositionHolder } from "./positionHolder"
-import { ConstructorConfig, Token } from "./types"
+import {
+  ConstructorConfig,
+  Token,
+  CanvazResponse,
+  LyricsResponse,
+} from "./types"
 import { PlayerEvent, PlayerEventTypes, TokenScope } from "./types"
 import { TRACK_REGEX, _librespotModule } from "./utils"
 
@@ -239,4 +243,6 @@ export abstract class GenericPlayer {
   public abstract seek(posMs: number): Promise<void>
   public abstract close(): Promise<void>
   public abstract getCurrentPosition(): number
+  public abstract getCanvas(track: string): Promise<CanvazResponse | undefined>
+  public abstract getLyrics(track: string): Promise<LyricsResponse | undefined>
 }
