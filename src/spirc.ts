@@ -65,7 +65,7 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
     if (uri && type === "track") {
       return _librespotModule.load_track_spirc.call(
         this.playerInstance,
-        trackURI,
+        uri,
         autoplay
       )
     }

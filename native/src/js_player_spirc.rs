@@ -88,6 +88,7 @@ impl JsPlayerSpircWrapper {
 
                 match res {
                     Ok((spirc, spirc_task)) => {
+                        spirc.activate().unwrap();
                         JsPlayerSpircWrapper::start_player_event_thread(
                             event_callback_channel,
                             events_channel,
