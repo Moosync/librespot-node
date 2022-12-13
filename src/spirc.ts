@@ -1,8 +1,7 @@
 import { ConstructorConfig } from "./types"
 import { TokenScope } from "./types"
-import { request, DEFAULT_SCOPES, _librespotModule, TRACK_REGEX } from "./utils"
+import { request, DEFAULT_SCOPES, _librespotModule } from "./utils"
 import { GenericPlayer, safe_execution } from "./genericPlayer"
-import path from "path"
 
 export class SpotifyPlayerSpirc extends GenericPlayer {
   protected onPlayerInitialized() {
@@ -60,48 +59,16 @@ export class SpotifyPlayerSpirc extends GenericPlayer {
   }
 
   @safe_execution
-  public async load(trackURIs: string | string[]) {
-    const token = (await this.getToken("user-modify-playback-state"))
-      ?.access_token
-    if (!token) {
-      throw Error("Failed to get a valid access token")
+  public async load(trackURI: string, autoplay = false) {
+    const [uri, type] = this.validateUri(trackURI)
+
+    if (uri && type === "track") {
+      return _librespotModule.load_track_spirc.call(
+        this.playerInstance,
+        trackURI,
+        autoplay
+      )
     }
-
-    console.debug("using existing token", token)
-
-    const options: FetchConfig = {
-      method: "PUT",
-      search: {
-        device_id: this.device_id,
-      },
-      auth: token,
-      body: {},
-    }
-
-    if (typeof trackURIs === "string") {
-      trackURIs = [trackURIs]
-    }
-
-    for (let trackURI of trackURIs) {
-      const [uri, type] = this.validateUri(trackURI)
-      const body: Record<string, string[] | string> = {}
-
-      if (uri) {
-        switch (type) {
-          case "track":
-            body["uris"] = (body["uris"] as string[]) ?? []
-            ;(body["uris"]! as string[]).push(uri)
-            break
-          default:
-            body["context_uri"] = uri
-            break
-        }
-
-        options.body = body
-      }
-    }
-
-    await request<void>("https://api.spotify.com/v1/me/player/play", options)
   }
 
   @safe_execution

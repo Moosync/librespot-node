@@ -47,6 +47,7 @@ interface LibrespotModule {
     trackUri: string
   ) => Promise<import("../src/types").CanvazResponse>
   get_lyrics_spirc: (trackUri: string) => Promise<string>
+  load_track_spirc: (trackUri: string, autoPlay: boolean) => Promise<void>
 }
 
 interface FullConstructorConfig {

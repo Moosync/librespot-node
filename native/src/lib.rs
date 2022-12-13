@@ -3,7 +3,7 @@ use futures::executor::block_on;
 use js_player::JsPlayerWrapper;
 use js_player_spirc::JsPlayerSpircWrapper;
 use librespot::{
-    connect::spirc::Spirc,
+    connect::spirc::{Spirc, SpircLoadCommand},
     core::{Session, SpotifyId},
     playback::{mixer::Mixer, player::Player},
 };
@@ -366,6 +366,41 @@ fn load_track(mut cx: FunctionContext) -> JsResult<JsPromise> {
     Ok(promise)
 }
 
+fn load_track_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
+    let track_uri = cx.argument::<JsString>(0)?.value(&mut cx);
+    let auto_play = cx.argument::<JsBoolean>(1)?.value(&mut cx);
+
+    let promise = send_to_spirc(cx, move |player, session, channel, deferred| {
+        let track_id_res = SpotifyId::from_uri(track_uri.as_str());
+        if track_id_res.is_err() {
+            deferred.settle_with(channel, move |mut cx| {
+                cx.error(track_id_res.err().unwrap().to_string().as_str())
+            });
+            return;
+        }
+
+        let command = SpircLoadCommand {
+            context_uri: track_uri,
+            start_playing: auto_play,
+            shuffle: false,
+            repeat: false,
+            playing_track_index: 0,
+            tracks: vec![],
+        };
+
+        let load_resp = player.load(command);
+        if load_resp.is_err() {
+            deferred.settle_with(channel, move |mut cx| {
+                cx.error(track_id_res.err().unwrap().to_string().as_str())
+            });
+            return;
+        }
+        deferred.settle_with(channel, move |mut cx| Ok(cx.undefined()));
+    });
+
+    Ok(promise)
+}
+
 fn close_player(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     cx.this()
         .downcast_or_throw::<JsBox<JsPlayerWrapper>, _>(&mut cx)?
@@ -422,6 +457,7 @@ pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("get_token_spirc", get_token_spirc)?;
     cx.export_function("get_canvas_spirc", get_canvas_spirc)?;
     cx.export_function("get_lyrics_spirc", get_lyrics_spirc)?;
+    cx.export_function("load_track_spirc", load_track_spirc)?;
 
     cx.export_function("create_player", create_player)?;
     cx.export_function("play", play)?;
