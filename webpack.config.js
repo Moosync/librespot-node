@@ -1,5 +1,4 @@
 const path = require('path');
-const PnpWebpackPlugin = require(`pnp-webpack-plugin`);
 const mode = 'production'
 
 module.exports = {
@@ -13,15 +12,7 @@ module.exports = {
     libraryTarget: 'commonjs2',
   },
   resolve: {
-    extensions: ['.ts', '.js'], //resolve all the modules other than index.ts,
-    plugins: [
-      PnpWebpackPlugin,
-    ],
-  },
-  resolveLoader: {
-    plugins: [
-      PnpWebpackPlugin.moduleLoader(module),
-    ],
+    extensions: ['.ts', '.js'],
   },
   externals: [{ 'librespot': './build/librespot.node' }],
   module: {

@@ -2,7 +2,6 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "CommonJS",
-    "moduleResolution": "node",
     "sourceMap": true,
     "outDir": "dist",
     "strict": true,
@@ -13,10 +12,8 @@
     "experimentalDecorators": true,
     "typeRoots": [
       "types/index.d.ts",
-    ],
-    "types": [
-      "node"
-    ],
+      "node_modules/@types/"
+    ]
   },
   "include": [
     "src/**/*.ts",
