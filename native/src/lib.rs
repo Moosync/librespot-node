@@ -6,6 +6,7 @@ use librespot::{
     connect::spirc::{Spirc, SpircLoadCommand},
     core::{Session, SpotifyId},
     playback::{mixer::Mixer, player::Player},
+    protocol::spirc::TrackRef,
 };
 use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
@@ -379,19 +380,22 @@ fn load_track_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
             return;
         }
 
+        let mut track_ref = TrackRef::new();
+        track_ref.set_gid(Vec::from(track_id_res.unwrap().to_raw()));
+
         let command = SpircLoadCommand {
             context_uri: track_uri,
             start_playing: auto_play,
             shuffle: false,
             repeat: false,
             playing_track_index: 0,
-            tracks: vec![],
+            tracks: vec![track_ref],
         };
 
         let load_resp = player.load(command);
         if load_resp.is_err() {
             deferred.settle_with(channel, move |mut cx| {
-                cx.error(track_id_res.err().unwrap().to_string().as_str())
+                cx.error(load_resp.err().unwrap().to_string().as_str())
             });
             return;
         }
