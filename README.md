@@ -3,12 +3,15 @@
 This project was bootstrapped by [create-neon](https://www.npmjs.com/package/create-neon).
 
 ### Installing
+
 #### Using yarn
+
 ```bash
 yarn add librespot-node
 ```
 
 #### Using npm
+
 ```bash
 npm install librespot-node --save
 ```
@@ -46,4 +49,4 @@ sp.on("PlayerInitialized", () => {
 })
 ```
 
-Further documentation can be found at 
+[Further documentation can be found here](https://moosync.app/librespot-node/)
