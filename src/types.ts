@@ -49,6 +49,7 @@ export interface ConstructorConfig {
   passThrough?: boolean
   normalizationConfig?: Partial<NormalizationConfig>
   connectConfig?: Partial<ConnectConfig>
+  volumeCtrl?: "cubic" | "fixed" | "linear" | "log"
 }
 
 export interface AuthDetails {

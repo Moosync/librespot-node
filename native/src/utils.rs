@@ -333,6 +333,13 @@ pub fn get_credentials_from_obj(
     })
 }
 
+pub fn get_volume_ctrl_from_obj(
+    cx: &mut FunctionContext,
+    obj: Handle<JsObject>,
+) -> Result<String, Throw> {
+    Ok(obj.get::<JsString, _, _>(cx, "volumeCtrl")?.value(cx))
+}
+
 pub fn get_player_config_from_obj(
     cx: &mut FunctionContext,
     obj: Handle<JsObject>,

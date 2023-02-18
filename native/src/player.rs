@@ -8,7 +8,7 @@ use librespot::discovery::DeviceType;
 
 use librespot::playback::audio_backend::SinkBuilder;
 use librespot::playback::config::{PlayerConfig, VolumeCtrl};
-use librespot::playback::mixer::{Mixer, MixerConfig};
+use librespot::playback::mixer::{Mixer, MixerConfig, NoOpVolume};
 use librespot::playback::player::Player;
 use librespot::playback::{audio_backend, mixer};
 use neon::prelude::{Context, Handle};
@@ -24,6 +24,7 @@ pub fn new_player(
     backend_str: String,
     session: Session,
     player_config: PlayerConfig,
+    volume_ctrl: String,
 ) -> (Player, Box<dyn Mixer>) {
     let backend: SinkBuilder;
     if backend_str.is_empty() {
@@ -31,14 +32,18 @@ pub fn new_player(
     } else {
         backend = audio_backend::find(Some(backend_str)).unwrap();
     }
+
     let mut mixer_config = MixerConfig::default();
-    mixer_config.volume_ctrl = VolumeCtrl::Linear;
+    mixer_config.volume_ctrl =
+        VolumeCtrl::from_str_with_range(volume_ctrl.as_str(), VolumeCtrl::DEFAULT_DB_RANGE)
+            .unwrap_or_else(|_| VolumeCtrl::Log(VolumeCtrl::DEFAULT_DB_RANGE));
+
     let mixer = mixer::find(None).unwrap()(mixer_config);
 
     let p = Player::new(
         player_config,
         session.clone(),
-        mixer.get_soft_volume(),
+        Box::new(NoOpVolume),
         move || (backend)(None, librespot::playback::config::AudioFormat::F32),
     );
 

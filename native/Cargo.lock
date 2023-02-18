@@ -416,6 +416,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "either"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -908,9 +914,9 @@ dependencies = [
 
 [[package]]
 name = "hyper-rustls"
-version = "0.23.0"
+version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d87c48c02e0dc5e3b849a2041db3029fd066650f8f717c07bf8ed78ccb895cac"
+checksum = "1788965e61b367cd03a62950836d5cd41560c3577d90e40e0819373194d1661c"
 dependencies = [
  "http",
  "hyper",
@@ -1142,7 +1148,7 @@ dependencies = [
 [[package]]
 name = "librespot"
 version = "0.5.0-dev"
-source = "git+https://github.com/librespot-org/librespot?branch=dev#edf646d4bb4bd0c12f7e38d82de03a32f8cb346d"
+source = "git+https://github.com/librespot-org/librespot?branch=dev#a211ff94c6c9d11b78964aad91b2a7db1d17d04f"
 dependencies = [
  "env_logger 0.9.3",
  "futures-util",
@@ -1166,7 +1172,7 @@ dependencies = [
 [[package]]
 name = "librespot-audio"
 version = "0.5.0-dev"
-source = "git+https://github.com/librespot-org/librespot?branch=dev#edf646d4bb4bd0c12f7e38d82de03a32f8cb346d"
+source = "git+https://github.com/librespot-org/librespot?branch=dev#a211ff94c6c9d11b78964aad91b2a7db1d17d04f"
 dependencies = [
  "aes",
  "byteorder",
@@ -1186,7 +1192,7 @@ dependencies = [
 [[package]]
 name = "librespot-connect"
 version = "0.5.0-dev"
-source = "git+https://github.com/librespot-org/librespot?branch=dev#edf646d4bb4bd0c12f7e38d82de03a32f8cb346d"
+source = "git+https://github.com/librespot-org/librespot?branch=dev#a211ff94c6c9d11b78964aad91b2a7db1d17d04f"
 dependencies = [
  "form_urlencoded",
  "futures-util",
@@ -1194,7 +1200,7 @@ dependencies = [
  "librespot-playback",
  "librespot-protocol",
  "log",
- "protobuf 2.28.0",
+ "protobuf",
  "rand",
  "serde",
  "serde_json",
@@ -1206,7 +1212,7 @@ dependencies = [
 [[package]]
 name = "librespot-core"
 version = "0.5.0-dev"
-source = "git+https://github.com/librespot-org/librespot?branch=dev#edf646d4bb4bd0c12f7e38d82de03a32f8cb346d"
+source = "git+https://github.com/librespot-org/librespot?branch=dev#a211ff94c6c9d11b78964aad91b2a7db1d17d04f"
 dependencies = [
  "aes",
  "base64",
@@ -1222,7 +1228,7 @@ dependencies = [
  "httparse",
  "hyper",
  "hyper-proxy",
- "hyper-rustls 0.23.0",
+ "hyper-rustls 0.23.2",
  "librespot-protocol",
  "log",
  "nonzero_ext",
@@ -1235,7 +1241,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "pbkdf2",
  "priority-queue",
- "protobuf 2.28.0",
+ "protobuf",
  "quick-xml",
  "rand",
  "rsa",
@@ -1258,7 +1264,7 @@ dependencies = [
 [[package]]
 name = "librespot-discovery"
 version = "0.5.0-dev"
-source = "git+https://github.com/librespot-org/librespot?branch=dev#edf646d4bb4bd0c12f7e38d82de03a32f8cb346d"
+source = "git+https://github.com/librespot-org/librespot?branch=dev#a211ff94c6c9d11b78964aad91b2a7db1d17d04f"
 dependencies = [
  "aes",
  "base64",
@@ -1282,7 +1288,7 @@ dependencies = [
 [[package]]
 name = "librespot-metadata"
 version = "0.5.0-dev"
-source = "git+https://github.com/librespot-org/librespot?branch=dev#edf646d4bb4bd0c12f7e38d82de03a32f8cb346d"
+source = "git+https://github.com/librespot-org/librespot?branch=dev#a211ff94c6c9d11b78964aad91b2a7db1d17d04f"
 dependencies = [
  "async-trait",
  "byteorder",
@@ -1290,7 +1296,9 @@ dependencies = [
  "librespot-core",
  "librespot-protocol",
  "log",
- "protobuf 2.28.0",
+ "protobuf",
+ "serde",
+ "serde_json",
  "thiserror",
  "uuid",
 ]
@@ -1307,7 +1315,7 @@ dependencies = [
  "log",
  "neon",
  "neon-build",
- "protobuf 3.2.0",
+ "protobuf",
  "reqwest",
  "sha1",
  "simple-logging",
@@ -1317,7 +1325,7 @@ dependencies = [
 [[package]]
 name = "librespot-playback"
 version = "0.5.0-dev"
-source = "git+https://github.com/librespot-org/librespot?branch=dev#edf646d4bb4bd0c12f7e38d82de03a32f8cb346d"
+source = "git+https://github.com/librespot-org/librespot?branch=dev#a211ff94c6c9d11b78964aad91b2a7db1d17d04f"
 dependencies = [
  "byteorder",
  "cpal",
@@ -1340,11 +1348,11 @@ dependencies = [
 [[package]]
 name = "librespot-protocol"
 version = "0.5.0-dev"
-source = "git+https://github.com/librespot-org/librespot?branch=dev#edf646d4bb4bd0c12f7e38d82de03a32f8cb346d"
+source = "git+https://github.com/librespot-org/librespot?branch=dev#a211ff94c6c9d11b78964aad91b2a7db1d17d04f"
 dependencies = [
  "glob",
- "protobuf 2.28.0",
- "protobuf-codegen-pure",
+ "protobuf",
+ "protobuf-codegen",
 ]
 
 [[package]]
@@ -1608,9 +1616,9 @@ checksum = "38bf9645c8b145698bb0b18a4637dcacbc421ea49bef2317e4fd8065a387cf21"
 
 [[package]]
 name = "ntapi"
-version = "0.3.7"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c28774a7fd2fbb4f0babd8237ce554b73af68021b5f695a3cebd6c59bac0980f"
+checksum = "bc51db7b362b205941f71232e56c625156eb9a929f8cf74a428fd5bc094a4afc"
 dependencies = [
  "winapi",
 ]
@@ -1643,9 +1651,9 @@ dependencies = [
 
 [[package]]
 name = "num-bigint-dig"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "566d173b2f9406afbc5510a90925d5a2cd80cae4605631f1212303df265de011"
+checksum = "2399c9463abc5f909349d8aa9ba080e0b88b3ce2885389b60b993f39b1a56905"
 dependencies = [
  "byteorder",
  "lazy_static",
@@ -2029,12 +2037,6 @@ dependencies = [
 
 [[package]]
 name = "protobuf"
-version = "2.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
-
-[[package]]
-name = "protobuf"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b55bad9126f378a853655831eb7363b7b01b81d19f8cb1218861086ca4a1a61e"
@@ -2047,21 +2049,33 @@ dependencies = [
 
 [[package]]
 name = "protobuf-codegen"
-version = "2.28.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "033460afb75cf755fcfc16dfaed20b86468082a2ea24e05ac35ab4a099a017d6"
+checksum = "0dd418ac3c91caa4032d37cb80ff0d44e2ebe637b2fb243b6234bf89cdac4901"
 dependencies = [
- "protobuf 2.28.0",
+ "anyhow",
+ "once_cell",
+ "protobuf",
+ "protobuf-parse",
+ "regex",
+ "tempfile",
+ "thiserror",
 ]
 
 [[package]]
-name = "protobuf-codegen-pure"
-version = "2.28.0"
+name = "protobuf-parse"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95a29399fc94bcd3eeaa951c715f7bea69409b2445356b00519740bcd6ddd865"
+checksum = "9d39b14605eaa1f6a340aec7f320b34064feb26c93aec35d6a9a2272a8ddfa49"
 dependencies = [
- "protobuf 2.28.0",
- "protobuf-codegen",
+ "anyhow",
+ "indexmap",
+ "log",
+ "protobuf",
+ "protobuf-support",
+ "tempfile",
+ "thiserror",
+ "which",
 ]
 
 [[package]]
@@ -2236,11 +2250,12 @@ dependencies = [
 
 [[package]]
 name = "rpassword"
-version = "7.1.0"
+version = "7.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20c9f5d2a0c3e2ea729ab3706d22217177770654c3ef5056b68b69d07332d3f5"
+checksum = "6678cf63ab3491898c0d021b493c94c9b221d91295294a2a5746eacbe5928322"
 dependencies = [
  "libc",
+ "rtoolbox",
  "winapi",
 ]
 
@@ -2262,6 +2277,16 @@ dependencies = [
  "smallvec",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "rtoolbox"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "034e22c514f5c0cb8a10ff341b9b048b5ceb21591f31c8f44c43b960f9b3524a"
+dependencies = [
+ "libc",
+ "winapi",
 ]
 
 [[package]]
@@ -2487,17 +2512,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sha-1"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "028f48d513f9678cda28f6e4064755b3fbb2af6acd672f2c209b62323f7aea0f"
-dependencies = [
- "cfg-if",
- "cpufeatures",
- "digest",
-]
-
-[[package]]
 name = "sha1"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2717,9 +2731,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.25.3"
+version = "0.27.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71eb43e528fdc239f08717ec2a378fdb017dddbc3412de15fff527554591a66c"
+checksum = "975fe381e0ecba475d4acff52466906d95b153a40324956552e027b2a9eaa89e"
 dependencies = [
  "cfg-if",
  "core-foundation-sys",
@@ -2912,9 +2926,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.17.2"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f714dd15bead90401d77e04243611caec13726c2408afd5b31901dfcdcb3b181"
+checksum = "54319c93411147bced34cb5609a80e0a8e44c5999c93903a81cd866630ec0bfd"
 dependencies = [
  "futures-util",
  "log",
@@ -2983,9 +2997,9 @@ checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 
 [[package]]
 name = "tungstenite"
-version = "0.17.3"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e27992fd6a8c29ee7eef28fc78349aa244134e10ad447ce3b9f0ac0ed0fa4ce0"
+checksum = "30ee6ab729cd4cf0fd55218530c4522ed30b7b6081752839b68fcec8d0960788"
 dependencies = [
  "base64",
  "byteorder",
@@ -2995,7 +3009,7 @@ dependencies = [
  "log",
  "rand",
  "rustls 0.20.7",
- "sha-1",
+ "sha1",
  "thiserror",
  "url",
  "utf-8",
@@ -3076,9 +3090,9 @@ checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "vergen"
-version = "7.4.2"
+version = "7.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73ba753d713ec3844652ad2cb7eb56bc71e34213a14faddac7852a10ba88f61e"
+checksum = "447f9238a4553957277b3ee09d80babeae0811f1b3baefb093de1c0448437a37"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -3217,6 +3231,17 @@ checksum = "f095d78192e208183081cc07bc5515ef55216397af48b873e5edcd72637fa1bd"
 dependencies = [
  "ring",
  "untrusted",
+]
+
+[[package]]
+name = "which"
+version = "4.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2441c784c52b289a054b7201fc93253e288f094e2f4be9058343127c4226a269"
+dependencies = [
+ "either",
+ "libc",
+ "once_cell",
 ]
 
 [[package]]

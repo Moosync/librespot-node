@@ -45,6 +45,7 @@ impl JsPlayerSpircWrapper {
         connect_config: ConnectConfig,
         cache_config: Cache,
         backend: String,
+        volume_ctrl: String,
     ) -> Result<Self, Error>
     where
         C: Context<'a>,
@@ -73,7 +74,8 @@ impl JsPlayerSpircWrapper {
 
                 let device_id = session.device_id().to_string();
 
-                let (player, mixer) = new_player(backend, session.clone(), player_config.clone());
+                let (player, mixer) =
+                    new_player(backend, session.clone(), player_config.clone(), volume_ctrl);
 
                 let events_channel = player.get_player_event_channel();
 

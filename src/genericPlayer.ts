@@ -98,6 +98,8 @@ export abstract class GenericPlayer {
 
     config.pos_update_interval = config.pos_update_interval ?? 500
 
+    config.volumeCtrl = config.volumeCtrl ?? "log"
+
     return config as FullConstructorConfig
   }
 
