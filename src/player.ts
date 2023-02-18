@@ -7,21 +7,34 @@ export class SpotifyPlayer extends GenericPlayer {
     this.device_id = _librespotModule.get_device_id.call(this.playerInstance)
   }
 
+  /**
+   * Set player state to play
+   */
   @safe_execution
   public async play() {
     await _librespotModule.play.call(this.playerInstance)
   }
 
+  /**
+   * Set player state to paused
+   */
   @safe_execution
   public async pause() {
     await _librespotModule.pause.call(this.playerInstance)
   }
 
+  /**
+   * Seek current song to position
+   * @param posMs position in milliseconds
+   */
   @safe_execution
   public async seek(posMs: number) {
     await _librespotModule.seek.call(this.playerInstance, posMs)
   }
 
+  /**
+   * Clear all listeners and close player
+   */
   @safe_execution
   public async close() {
     this._positionHolder.clearListener()
@@ -29,10 +42,19 @@ export class SpotifyPlayer extends GenericPlayer {
     await _librespotModule.close_player.call(this.playerInstance)
   }
 
+  /**
+   * Get current position of player
+   * @returns current position in milliseconds
+   */
   public getCurrentPosition() {
     return this._positionHolder.position
   }
 
+  /**
+   * Set volume in percentage or uint16
+   * @param volume: Volume in percentage or uint16
+   * @param raw if true, volume is set in uint16. Otherwise percentage. (Default: false)
+   */
   @safe_execution
   public async setVolume(volume: number, raw = false) {
     let parsedVolume: number = volume
@@ -43,6 +65,11 @@ export class SpotifyPlayer extends GenericPlayer {
     await _librespotModule.set_volume.call(this.playerInstance, parsedVolume)
   }
 
+  /**
+   * Returns volume in percentage or uint16
+   * @param raw If true, returns volume in uint16. Otherwise percentage
+   * @returns volume in percentage or uint16
+   */
   public getVolume(raw = false) {
     if (raw) {
       return this._volume
@@ -51,6 +78,11 @@ export class SpotifyPlayer extends GenericPlayer {
     return (this._volume / 65535) * 100
   }
 
+  /**
+   * Loads a track by Spotify URI or URL
+   * @param trackURI spotify URI or URL of track to be loaded. (Eg. spotify:track:4PTG3Z6ehGkBFwjybzWkR8)
+   * @param autoplay if true, track will start playing immediately after being loaded. (Default: false)
+   */
   @safe_execution
   public async load(
     trackURIs: string | string[],
@@ -88,6 +120,11 @@ export class SpotifyPlayer extends GenericPlayer {
     }
   }
 
+  /**
+   * Get spotify access token for logged in account
+   * @param scopes scopes to get token for. (https://developer.spotify.com/documentation/general/guides/authorization/scopes/)
+   * @returns token
+   */
   @safe_execution
   public async getToken(...scopes: TokenScope[]) {
     scopes = scopes && scopes.length > 0 ? scopes : DEFAULT_SCOPES
@@ -112,6 +149,11 @@ export class SpotifyPlayer extends GenericPlayer {
     return res
   }
 
+  /**
+   * Returns spotify canvas URL for track
+   * @param track track URI or URL to get canvas for
+   * @returns Spotify canvas public URL
+   */
   @safe_execution
   public async getCanvas(track: string) {
     const [uri, type] = this.validateUri(track)
@@ -126,6 +168,11 @@ export class SpotifyPlayer extends GenericPlayer {
     }
   }
 
+  /**
+   * Get lyrics for spotify track
+   * @param track Spotify track URI or URL
+   * @returns
+   */
   @safe_execution
   public async getLyrics(track: string) {
     const [uri, type] = this.validateUri(track)

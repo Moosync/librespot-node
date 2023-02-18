@@ -380,7 +380,7 @@ fn load_track_spirc(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let track_uri = cx.argument::<JsString>(0)?.value(&mut cx);
     let auto_play = cx.argument::<JsBoolean>(1)?.value(&mut cx);
 
-    let promise = send_to_spirc(cx, move |player, session, channel, deferred| {
+    let promise = send_to_spirc(cx, move |player, _, channel, deferred| {
         let track_id_res = SpotifyId::from_uri(track_uri.as_str());
         if track_id_res.is_err() {
             deferred.settle_with(channel, move |mut cx| {

@@ -15,6 +15,11 @@
       "node_modules/@types/"
     ]
   },
+  "typedocOptions": {
+    "entryPoints": [
+      "src/index.ts",
+    ],
+  },
   "include": [
     "src/**/*.ts",
   ],

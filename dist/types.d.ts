@@ -20,16 +20,48 @@ export interface CacheConfig {
     audio_location?: string;
     size_limiter?: number;
 }
+/**
+ * Config to pass to librespot instance
+ */
 export interface ConstructorConfig {
+    /**
+     * Authentication config
+     */
     auth: Partial<AuthDetails>;
+    /**
+     * Cache config
+     */
     cache?: CacheConfig;
+    /**
+     * Interval at which player position is updated. (milliseconds)
+     */
     pos_update_interval?: number;
+    /**
+     * Librespot backend to use (Default rodio)
+     * Possible values rodio, pipe, subprocess
+     */
     backend?: string;
+    /**
+     * Enable gapless playback (Default false)
+     */
     gapless?: boolean;
+    /**
+     * Bitrate to use.
+     * Possible values 96, 160, 320
+     */
     bitrate?: "96" | "160" | "320";
     passThrough?: boolean;
+    /**
+     * Volume normalization config
+     */
     normalizationConfig?: Partial<NormalizationConfig>;
+    /**
+     * Spotify connect config (Works only wit SPIRC player)
+     */
     connectConfig?: Partial<ConnectConfig>;
+    /**
+     * Mixer volume control type
+     */
     volumeCtrl?: "cubic" | "fixed" | "linear" | "log";
 }
 export interface AuthDetails {
@@ -37,6 +69,9 @@ export interface AuthDetails {
     password: string;
     authType?: "AUTHENTICATION_USER_PASS" | "AUTHENTICATION_USER_PASS" | "AUTHENTICATION_STORED_FACEBOOK_CREDENTIALS" | "AUTHENTICATION_SPOTIFY_TOKEN" | "AUTHENTICATION_FACEBOOK_TOKEN";
 }
+/**
+ * Events emitted by player
+ */
 export type PlayerEventTypes = "Stopped" | "Loading" | "Preloading" | "Playing" | "Paused" | "TimeToPreloadNextTrack" | "EndOfTrack" | "Unavailable" | "VolumeChanged" | "PositionCorrection" | "Seeked" | "FilterExplicitContentChanged" | "TrackChanged" | "SessionConnected" | "SessionDisconnected" | "SessionClientChanged" | "ShuffleChanged" | "RepeatChanged" | "AutoPlayChanged" | "PlayerInitialized" | "TimeUpdated" | "InitializationError";
 export type PlayerEvent<T extends PlayerEventTypes = "InitializationError"> = {
     event: T;
