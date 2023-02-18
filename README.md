@@ -5,12 +5,12 @@ This project was bootstrapped by [create-neon](https://www.npmjs.com/package/cre
 ### Installing
 #### Using yarn
 ```bash
-yarn add file-reader-reverse
+yarn add librespot-node
 ```
 
 #### Using npm
 ```bash
-npm install file-reader-reverse --save
+npm install librespot-node --save
 ```
 
 ### Usage
