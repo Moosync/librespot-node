@@ -1,5 +1,7 @@
 # librespot-node
 
+Librespot wrapper for Node.JS.
+
 This project was bootstrapped by [create-neon](https://www.npmjs.com/package/create-neon).
 
 ### Installing
