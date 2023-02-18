@@ -43,7 +43,7 @@ pub fn new_player(
     let p = Player::new(
         player_config,
         session.clone(),
-        Box::new(NoOpVolume),
+        mixer.get_soft_volume(),
         move || (backend)(None, librespot::playback::config::AudioFormat::F32),
     );
 
