@@ -63,6 +63,7 @@ export interface ConstructorConfig {
      * Mixer volume control type
      */
     volumeCtrl?: "cubic" | "fixed" | "linear" | "log";
+    logLevel?: 'debug' | 'info' | 'trace' | 'warn' | 'error';
 }
 export interface AuthDetails {
     username: string;

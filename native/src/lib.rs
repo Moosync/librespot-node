@@ -8,6 +8,7 @@ use librespot::{
     playback::{mixer::Mixer, player::Player},
     protocol::spirc::TrackRef,
 };
+use log::LevelFilter;
 use neon::{
     prelude::{Channel, Context, FunctionContext, Handle, ModuleContext, Object},
     result::{JsResult, NeonResult},
@@ -456,9 +457,28 @@ fn get_token(mut cx: FunctionContext) -> JsResult<JsPromise> {
     Ok(promise)
 }
 
+fn get_log_level(str: &str) -> LevelFilter {
+    match str.to_lowercase().as_str() {
+        "debug" => LevelFilter::Debug,
+        "info" => LevelFilter::Info,
+        "trace" => LevelFilter::Trace,
+        "warn" => LevelFilter::Warn,
+        &_ => LevelFilter::Error,
+    }
+}
+
+fn init_logger(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    let filter_level = cx.argument::<JsString>(0)?.value(&mut cx);
+    env_logger::builder()
+        .filter_level(get_log_level(filter_level.as_str()))
+        .init();
+
+    Ok(cx.undefined())
+}
+
 #[neon::main]
 pub fn main(mut cx: ModuleContext) -> NeonResult<()> {
-    env_logger::init();
+    cx.export_function("init_logger", init_logger)?;
 
     cx.export_function("create_player_spirc", create_player_spirc)?;
     cx.export_function("play_spirc", play_spirc)?;

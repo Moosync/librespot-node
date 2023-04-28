@@ -115,6 +115,10 @@ export abstract class GenericPlayer {
     )
     this._positionHolder = new PositionHolder(config.pos_update_interval)
 
+    if (config.logLevel) {
+      _librespotModule.init_logger(config.logLevel)
+    }
+
     _librespotModule[playerConstructMethod](
       validatedConfig,
       this.player_event_callback.bind(this)
