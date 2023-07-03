@@ -24,6 +24,7 @@ sha1 = "0.10.5"
 futures-util = { version = "0.3.25", default_features = false }
 protobuf = { version = "3.0.0", features = ["bytes"]}
 reqwest = "0.11.13"
+symphonia = { version="0.5.2", features=["default", "mpa"] }
 
 [dependencies.neon]
 version = "0.10.1"
