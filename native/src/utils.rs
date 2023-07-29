@@ -193,6 +193,9 @@ where
         PlayerEvent::FilterExplicitContentChanged { filter } => obj
             .add_event("FilterExplicitContentChanged")
             .add_bool("filter", filter),
+        PlayerEvent::PlayRequestIdChanged { play_request_id } => obj
+            .add_event("TimeToPreloadNextTrack")
+            .add_u64("play_request_id", play_request_id),
     };
 
     let js_obj = obj.finalize();

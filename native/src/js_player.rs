@@ -1,5 +1,8 @@
 use std::{
-    sync::mpsc::{self, Receiver},
+    sync::{
+        mpsc::{self, Receiver},
+        Arc,
+    },
     thread,
 };
 
@@ -34,7 +37,7 @@ pub struct JsPlayerWrapper {
 }
 
 pub type Callback =
-    Box<dyn (FnOnce(&mut Player, &mut Box<dyn Mixer>, Session, &Channel, Deferred)) + Send>;
+    Box<dyn (FnOnce(&mut Arc<Player>, &mut Arc<dyn Mixer>, Session, &Channel, Deferred)) + Send>;
 
 pub enum Message {
     Callback(Deferred, Callback),
@@ -144,8 +147,8 @@ impl JsPlayerWrapper {
 
     pub fn listen_commands(
         rx: Receiver<Message>,
-        mut player: Player,
-        mut mixer: Box<dyn Mixer>,
+        mut player: Arc<Player>,
+        mut mixer: Arc<dyn Mixer>,
         session: Session,
         close_tx: mpsc::Sender<()>,
         callback_channel: Channel,
@@ -180,7 +183,7 @@ impl JsPlayerWrapper {
     pub fn send(
         &self,
         deferred: Deferred,
-        callback: impl (FnOnce(&mut Player, &mut Box<dyn Mixer>, Session, &Channel, Deferred))
+        callback: impl (FnOnce(&mut Arc<Player>, &mut Arc<dyn Mixer>, Session, &Channel, Deferred))
             + Send
             + 'static,
     ) {

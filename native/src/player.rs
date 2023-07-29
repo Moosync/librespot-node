@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use futures_util::StreamExt;
 
 use librespot;
@@ -8,7 +10,7 @@ use librespot::discovery::DeviceType;
 
 use librespot::playback::audio_backend::SinkBuilder;
 use librespot::playback::config::{PlayerConfig, VolumeCtrl};
-use librespot::playback::mixer::{Mixer, MixerConfig, NoOpVolume};
+use librespot::playback::mixer::{Mixer, MixerConfig};
 use librespot::playback::player::Player;
 use librespot::playback::{audio_backend, mixer};
 use neon::prelude::{Context, Handle};
@@ -25,7 +27,7 @@ pub fn new_player(
     session: Session,
     player_config: PlayerConfig,
     volume_ctrl: String,
-) -> (Player, Box<dyn Mixer>) {
+) -> (Arc<Player>, Arc<dyn Mixer>) {
     let backend: SinkBuilder;
     if backend_str.is_empty() {
         backend = audio_backend::find(Some("rodio".to_string())).unwrap();

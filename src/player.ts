@@ -97,20 +97,22 @@ export class SpotifyPlayer extends GenericPlayer {
       trackURIs = [trackURIs]
     }
 
-    for (let trackURI of trackURIs) {
+    const parsedTrackUris = trackURIs.map(trackURI => {
       const match = trackURI.match(regex)
 
       if (match?.groups?.type) {
         if (match.groups.urlType?.startsWith("https")) {
           const parsedUrl = new URL(trackURI)
-          trackURI = `spotify:${match.groups.type}:${parsedUrl.pathname
+          return `spotify:${match.groups.type}:${parsedUrl.pathname
             .split("/")
             .at(-1)}`
         }
       }
-    }
 
-    for (const t of trackURIs) {
+      return trackURI
+    })
+
+    for (const t of parsedTrackUris) {
       await _librespotModule.load_track.call(
         this.playerInstance,
         t,
@@ -191,3 +193,19 @@ export class SpotifyPlayer extends GenericPlayer {
     }
   }
 }
+
+// const player = new SpotifyPlayer({
+// })
+
+// player.on('PlayerInitialized', async () => {
+//   console.log('initialized')
+//   await player.load('https://open.spotify.com/track/6tUcFEXos6TGhESFlkAyCm?si=afc1b0f6fec64da0')
+//   await player.play()
+//   await player.setVolume(100)
+// })
+
+// player.on('InitializationError', (e) => console.error(e))
+
+// setInterval(() => { }, 1000)
+
+

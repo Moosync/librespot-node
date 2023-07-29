@@ -149,6 +149,7 @@ export abstract class GenericPlayer {
   }
 
   private player_event_callback(event: PlayerEvent) {
+    console.log('got callback', event)
     this.eventEmitter.emit(event.event, event)
   }
 

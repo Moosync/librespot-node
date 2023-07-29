@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use constants::GLOBAL_JS_CALLBACK_METHOD;
 use futures::executor::block_on;
 use js_player::JsPlayerWrapper;
@@ -60,7 +62,7 @@ fn send_to_spirc(
 
 fn send_to_player(
     mut cx: FunctionContext,
-    callback: impl (FnOnce(&mut Player, &mut Box<dyn Mixer>, Session, &Channel, Deferred))
+    callback: impl (FnOnce(&mut Arc<Player>, &mut Arc<dyn Mixer>, Session, &Channel, Deferred))
         + Send
         + 'static,
 ) -> Handle<JsPromise> {
