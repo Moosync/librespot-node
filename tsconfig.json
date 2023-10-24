@@ -9,6 +9,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
+    "declarationDir": "./dist",
     "experimentalDecorators": true,
     "typeRoots": [
       "types/index.d.ts",
