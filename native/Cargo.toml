@@ -18,7 +18,7 @@ log = { version = "^0.4.5", features = ["std"] }
 env_logger = "0.10.0"
 simple-logging = "2.0.1"
 futures = "0.3.25"
-librespot = { git = "https://github.com/librespot-org/librespot", branch = "dev" }
+librespot = { git = "https://github.com/librespot-org/librespot", branch = "dev", features = ["default"]}
 hex = "0.4.3"
 sha1 = "0.10.5"
 futures-util = { version = "0.3.25", default_features = false }
